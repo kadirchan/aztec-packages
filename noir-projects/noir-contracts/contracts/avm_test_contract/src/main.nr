@@ -1,24 +1,26 @@
 use dep::aztec::protocol_types::traits::{Serialize, Deserialize};
 
+global NOTE_LENGTH = 10000;
+
 struct Note {
-    a: Field,
-    b: Field,
+    a: [Field; NOTE_LENGTH]
 }
 
-impl Serialize<2> for Note {
-    fn serialize(self) -> [Field; 2] {
-        [self.a, self.b]
+impl Serialize<NOTE_LENGTH> for Note {
+    fn serialize(self) -> [Field; NOTE_LENGTH] {
+        self.a
     }
 }
 
-impl Deserialize<2> for Note {
-    fn deserialize(wire: [Field; 2]) -> Note {
-        Note {a: wire[0], b: wire[1]}
+impl Deserialize<NOTE_LENGTH> for Note {
+    fn deserialize(wire: [Field; NOTE_LENGTH]) -> Note {
+        Note {a: wire}
     }
 }
 
 contract AvmTest {
     use crate::Note;
+    use crate::NOTE_LENGTH;
 
     global big_field_128_bits: Field = 0x001234567890abcdef1234567890abcdef;
     global big_field_136_bits: Field = 0x991234567890abcdef1234567890abcdef;
@@ -59,13 +61,13 @@ contract AvmTest {
         storage.single.read()
     }
 
-    #[aztec(public)]
-    fn set_storage_list(a: Field, b: Field) {
-        storage.list.write(Note { a, b });
-    }
+    // #[aztec(public)]
+    // fn set_storage_list(a: Field, b: Field) {
+    //     storage.list.write(Note { a, b });
+    // }
 
     #[aztec(public)]
-    fn read_storage_list() -> [Field; 2] {
+    fn read_storage_list() -> [Field; NOTE_LENGTH] {
         let note: Note = storage.list.read();
         note.serialize()
     }

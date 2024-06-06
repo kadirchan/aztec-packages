@@ -21,6 +21,7 @@ use acvm::brillig_vm::brillig::HeapVector;
 use acvm::{acir::AcirField, FieldElement};
 use fxhash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use iter_extended::vecmap;
+use itertools::Itertools;
 use num_bigint::BigUint;
 
 use super::brillig_black_box::convert_black_box_call;
@@ -1664,23 +1665,51 @@ impl<'block> BrilligBlock<'block> {
 
                     // Write the items
 
-                    // Allocate a register for the iterator
-                    let iterator_register =
-                        self.brillig_context.make_usize_constant_instruction(0_usize.into());
+                    // This helps to optimize the case where all elements are the same
+                    // like initialization with [0; N].
+                    if array.iter().unique().count() == 1 {
+                        let size_variable = self
+                            .brillig_context
+                            .make_usize_constant_instruction(array.len().into());
+                        let element_variable =
+                            self.convert_ssa_value(*array.iter().next().unwrap(), dfg);
 
-                    for element_id in array.iter() {
-                        let element_variable = self.convert_ssa_value(*element_id, dfg);
-                        // Store the item in memory
-                        self.store_variable_in_array(pointer, iterator_register, element_variable);
-                        // Increment the iterator
-                        self.brillig_context.codegen_usize_op_in_place(
-                            iterator_register.address,
-                            BrilligBinaryOp::Add,
-                            1,
+                        self.brillig_context.codegen_loop(
+                            size_variable.address,
+                            |ctx, iterator| {
+                                Self::store_variable_in_array_with_ctx(
+                                    ctx,
+                                    pointer,
+                                    iterator,
+                                    element_variable,
+                                );
+                            },
                         );
-                    }
 
-                    self.brillig_context.deallocate_single_addr(iterator_register);
+                        self.brillig_context.deallocate_single_addr(size_variable);
+                    } else {
+                        // Allocate a register for the iterator
+                        let iterator_register =
+                            self.brillig_context.make_usize_constant_instruction(0_usize.into());
+
+                        for element_id in array.iter() {
+                            let element_variable = self.convert_ssa_value(*element_id, dfg);
+                            // Store the item in memory
+                            self.store_variable_in_array(
+                                pointer,
+                                iterator_register,
+                                element_variable,
+                            );
+                            // Increment the iterator
+                            self.brillig_context.codegen_usize_op_in_place(
+                                iterator_register.address,
+                                BrilligBinaryOp::Add,
+                                1,
+                            );
+                        }
+
+                        self.brillig_context.deallocate_single_addr(iterator_register);
+                    }
 
                     new_variable
                 }
