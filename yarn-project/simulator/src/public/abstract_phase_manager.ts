@@ -65,6 +65,8 @@ import {
 } from '@aztec/simulator';
 import { type MerkleTreeOperations } from '@aztec/world-state';
 
+import { assert } from 'console';
+
 import { HintsBuilder } from './hints_builder.js';
 import { type PublicKernelCircuitSimulator } from './public_kernel_circuit_simulator.js';
 import { lastSideEffectCounter } from './utils.js';
@@ -263,7 +265,19 @@ export abstract class AbstractPhaseManager {
       while (executionStack.length) {
         const current = executionStack.pop()!;
         const isExecutionRequest = !isPublicExecutionResult(current);
-        const sideEffectCounter = lastSideEffectCounter(kernelPublicOutput) + 1;
+        let startSideEffectCounter: number;
+        if (isExecutionRequest) {
+          startSideEffectCounter = (current as PublicExecution).callContext.sideEffectCounter;
+        } else {
+          startSideEffectCounter = (current as PublicExecutionResult).startSideEffectCounter.toNumber();
+        }
+        assert(
+          startSideEffectCounter == lastSideEffectCounter(kernelPublicOutput),
+          `Kernel side effect counter ${lastSideEffectCounter(
+            kernelPublicOutput,
+          )} does not match computed side effect counter ${startSideEffectCounter}.`,
+        );
+
         const availableGas = this.getAvailableGas(tx, kernelPublicOutput);
         const pendingNullifiers = this.getSiloedPendingNullifiers(kernelPublicOutput);
 
@@ -275,7 +289,7 @@ export abstract class AbstractPhaseManager {
               tx.data.constants.txContext,
               pendingNullifiers,
               transactionFee,
-              sideEffectCounter,
+              startSideEffectCounter,
             )
           : current;
 

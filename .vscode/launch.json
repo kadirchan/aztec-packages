@@ -5,6 +5,13 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "BB avm_prove",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/barretenberg/cpp/build-debug/bin/bb",
+      "args": ["avm_prove", "--avm-bytecode", "/tmp/bb-XXgzVD/tmp-WrMwBo/avm_bytecode.bin", "--avm-calldata", "/tmp/bb-XXgzVD/tmp-WrMwBo/avm_calldata.bin", "--avm-public-inputs", "/tmp/bb-XXgzVD/tmp-WrMwBo/avm_public_inputs.bin", "--avm-hints", "/tmp/bb-XXgzVD/tmp-WrMwBo/avm_hints.bin", "-o", "/tmp/bb-XXgzVD/tmp-WrMwBo"],
+    },
+    {
       "address": "${config:mainframeAddress}",
       "port": 9221,
       "type": "node",
