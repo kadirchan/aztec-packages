@@ -3,6 +3,8 @@ title: Transferring Tokens with Aztec.js
 sidebar_position: 1
 ---
 
+hello
+
 import Image from "@theme/IdealImage";
 
 In this guide, we will retrieving the Sandbox and deploy a pre-written contract to it using Aztec.js.
