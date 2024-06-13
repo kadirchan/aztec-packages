@@ -293,6 +293,7 @@ export async function main() {
 
   // Iterate over each .jsonl file
   for (const file of files) {
+    log(`Processing file: ${file}`);
     const filePath = path.join(LogsDir, file);
     const fileStream = fs.createReadStream(filePath);
     const rl = readline.createInterface({ input: fileStream });
