@@ -29,6 +29,7 @@ import { Fr } from '@aztec/foundation/fields';
 import { type DebugLogger, createDebugLogger } from '@aztec/foundation/log';
 import { RunningPromise } from '@aztec/foundation/running-promise';
 import { ClassRegistererAddress } from '@aztec/protocol-contracts/class-registerer';
+import { type Gauge, type Histogram, Metrics, type TelemetryClient, ValueType } from '@aztec/telemetry-client';
 import {
   type ContractClassPublic,
   type ContractDataSource,
@@ -66,6 +67,9 @@ export class Archiver implements ArchiveSource {
    */
   private runningPromise?: RunningPromise;
 
+  private blockHeight: Gauge;
+  private blockSize: Histogram;
+
   /**
    * Creates a new instance of the Archiver.
    * @param publicClient - A client for interacting with the Ethereum node.
@@ -84,8 +88,23 @@ export class Archiver implements ArchiveSource {
     private readonly registryAddress: EthAddress,
     private readonly store: ArchiverDataStore,
     private readonly pollingIntervalMs = 10_000,
+    telemetry: TelemetryClient,
     private readonly log: DebugLogger = createDebugLogger('aztec:archiver'),
-  ) {}
+  ) {
+    const meter = telemetry.getMeter('Archiver');
+    this.blockHeight = meter.createGauge(Metrics.ARCHIVER_BLOCK_HEIGHT, {
+      description: 'The height of the latest block processed by the archiver',
+      valueType: ValueType.INT,
+    });
+
+    this.blockSize = meter.createHistogram(Metrics.ARCHIVER_BLOCK_SIZE, {
+      description: 'The number of transactions processed per block',
+      valueType: ValueType.INT,
+      advice: {
+        explicitBucketBoundaries: [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192],
+      },
+    });
+  }
 
   /**
    * Creates a new instance of the Archiver and blocks until it syncs from chain.
@@ -97,6 +116,7 @@ export class Archiver implements ArchiveSource {
   public static async createAndSync(
     config: ArchiverConfig,
     archiverStore: ArchiverDataStore,
+    telemetry: TelemetryClient,
     blockUntilSynced = true,
   ): Promise<Archiver> {
     const chain = createEthereumChain(config.rpcUrl, config.apiKey);
@@ -114,6 +134,7 @@ export class Archiver implements ArchiveSource {
       config.l1Contracts.registryAddress,
       archiverStore,
       config.archiverPollingIntervalMS,
+      telemetry,
     );
     await archiver.start(blockUntilSynced);
     return archiver;
@@ -286,6 +307,11 @@ export class Archiver implements ArchiveSource {
     );
 
     await this.store.addBlocks(retrievedBlocks);
+
+    this.blockHeight.record(Math.max(...retrievedBlocks.retrievedData.map(b => b.number)));
+    for (const block of retrievedBlocks.retrievedData) {
+      this.blockSize.record(block.body.txEffects.length);
+    }
   }
 
   /**

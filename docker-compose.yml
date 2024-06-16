@@ -28,6 +28,8 @@ services:
       - aztec:/var/lib/aztec
     ports:
       - 8080:8080/tcp
+    profiles:
+      - pxe
 
   node:
     image: aztecprotocol/aztec${AZTEC_DOCKER_TAG:-@sha256:03feac60e91f1aabf678cecbcd13271dda229120ec6007f2c1bac718ff550c70}
@@ -94,8 +96,88 @@ services:
     profiles:
       - cli
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib
+    configs:
+      - source: otel-collector-config
+        target: /etc/otelcol-contrib/config.yaml
+    profiles:
+      - metrics
+    ports:
+      - 4318:4318 # temp
+
+  prometheus:
+    image: prom/prometheus
+    profiles:
+      - metrics
+    configs:
+      - source: prometheus-config
+        target: /etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - 3000:3000
+    profiles:
+      - metrics
+    volumes:
+      - ./grafana_dashboards:/etc/grafana/provisioning/dashboards
+      - grafana:/var/lib/grafana
+    configs:
+      - source: grafana-sources
+        target: /etc/grafana/provisioning/datasources/default.yml
+
 volumes:
   aztec:
+  grafana:
+
+configs:
+  grafana-sources:
+    content: |
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          uid: aztec-node-metrics
+          type: prometheus
+          url: http://prometheus:9090
+          editable: false
+          isDefault: true
+          jsonData:
+            timeInterval: 10s
+
+  prometheus-config:
+    content: |
+      global:
+        evaluation_interval: 30s
+        scrape_interval: 10s
+      scrape_configs:
+        - job_name: otel-collector
+          static_configs:
+          - targets: ['otel-collector:8888']
+        - job_name: aztec
+          static_configs:
+          - targets: ['otel-collector:8889']
+  otel-collector-config:
+    content: |
+      receivers:
+        otlp:
+          protocols:
+            http:
+
+      processors:
+        batch:
+
+      exporters:
+        prometheus:
+          endpoint: 0.0.0.0:8889
+          metric_expiration: 5m
+
+      service:
+        pipelines:
+          metrics:
+            receivers: [otlp]
+            processors: [batch]
+            exporters: [prometheus]
 
 secrets:
   aztec-node-url:
