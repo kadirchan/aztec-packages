@@ -1,6 +1,5 @@
 import { AztecAddress, type GrumpkinPrivateKey, type KeyValidationRequest, type PublicKey } from '@aztec/circuits.js';
 import { EventSelector } from '@aztec/foundation/abi';
-import { randomBytes } from '@aztec/foundation/crypto';
 import { Fr } from '@aztec/foundation/fields';
 import { BufferReader, serializeToBuffer } from '@aztec/foundation/serialize';
 
@@ -35,7 +34,7 @@ export class L1EventPayload extends L1Payload {
     /**
      * Type identifier for the underlying event, (calculated as a function selector).
      */
-    public eventTypeId: Fr,
+    public eventTypeId: EventSelector,
   ) {
     super();
   }
@@ -51,7 +50,7 @@ export class L1EventPayload extends L1Payload {
       reader.readObject(Event),
       reader.readObject(AztecAddress),
       Fr.fromBuffer(reader),
-      Fr.fromBuffer(reader),
+      reader.readObject(EventSelector),
     );
   }
 
@@ -68,10 +67,7 @@ export class L1EventPayload extends L1Payload {
    * @returns A random L1EventPayload object.
    */
   static random() {
-    const eventTypeId = Fr.fromBuffer(
-      Buffer.concat([Buffer.alloc(Fr.SIZE_IN_BYTES - EventSelector.SIZE), randomBytes(EventSelector.SIZE)]),
-    );
-    return new L1EventPayload(Event.random(), AztecAddress.random(), Fr.random(), eventTypeId);
+    return new L1EventPayload(Event.random(), AztecAddress.random(), Fr.random(), EventSelector.random());
   }
 
   public encrypt(ephSk: GrumpkinPrivateKey, recipient: AztecAddress, ivpk: PublicKey, ovKeys: KeyValidationRequest) {
@@ -81,7 +77,7 @@ export class L1EventPayload extends L1Payload {
       recipient,
       ivpk,
       ovKeys,
-      new EncryptedEventLogIncomingBody(this.randomness, this.eventTypeId, this.event),
+      new EncryptedEventLogIncomingBody(this.randomness, this.eventTypeId.toField(), this.event),
     );
   }
 
@@ -117,7 +113,7 @@ export class L1EventPayload extends L1Payload {
 
     this.ensureMatchedMaskedContractAddress(address, incomingBody.randomness, encryptedLog.maskedContractAddress);
 
-    return new L1EventPayload(incomingBody.event, address, incomingBody.randomness, incomingBody.eventTypeId);
+    return new L1EventPayload(incomingBody.event, address, incomingBody.randomness, EventSelector.fromField(incomingBody.eventTypeId));
   }
 
   /**
@@ -152,7 +148,7 @@ export class L1EventPayload extends L1Payload {
 
     this.ensureMatchedMaskedContractAddress(address, incomingBody.randomness, encryptedLog.maskedContractAddress);
 
-    return new L1EventPayload(incomingBody.event, address, incomingBody.randomness, incomingBody.eventTypeId);
+    return new L1EventPayload(incomingBody.event, address, incomingBody.randomness, EventSelector.fromField(incomingBody.eventTypeId));
   }
 }
 

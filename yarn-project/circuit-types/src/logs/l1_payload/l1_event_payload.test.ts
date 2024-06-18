@@ -30,10 +30,7 @@ describe('L1 Event Payload', () => {
       randomness = Fr.random();
       maskedContractAddress = pedersenHash([contractAddress, randomness], 0);
 
-      const eventTypeId = Fr.fromBuffer(
-        Buffer.concat([Buffer.alloc(Fr.SIZE_IN_BYTES - EventSelector.SIZE), randomBytes(EventSelector.SIZE)]),
-      );
-      payload = new L1EventPayload(Event.random(), contractAddress, randomness, eventTypeId);
+      payload = new L1EventPayload(Event.random(), contractAddress, randomness, EventSelector.random());
 
       ovskM = GrumpkinScalar.random();
       ivskM = GrumpkinScalar.random();
