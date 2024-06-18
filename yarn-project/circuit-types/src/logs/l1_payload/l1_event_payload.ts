@@ -10,8 +10,8 @@ import { Event } from './payload.js';
 
 function isEventTypeIdValid(eventTypeId: Fr): boolean {
   const buf = eventTypeId.toBuffer();
-  // check that the first 28 bytes are zero
-  return !buf.subarray(0, Fr.SIZE_IN_BYTES - EventSelector.SIZE).some(x => x !== 0);
+  // Check that the first 28 bytes are zero and the value itself is non-zero
+  return !buf.subarray(0, Fr.SIZE_IN_BYTES - EventSelector.SIZE).some(x => x !== 0) && !eventTypeId.isZero();
 }
 
 /**

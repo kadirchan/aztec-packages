@@ -13,8 +13,8 @@ const NUM_BYTES_PER_NOTE_TYPE_ID = 4;
 
 function isNoteTypeIdValid(noteTypeId: Fr): boolean {
   const buf = noteTypeId.toBuffer();
-  // check that the first 28 bytes are zero
-  return !buf.subarray(0, Fr.SIZE_IN_BYTES - NUM_BYTES_PER_NOTE_TYPE_ID).some(x => x !== 0);
+  // Check that the first 28 bytes are zero and the value itself is non-zero
+  return !buf.subarray(0, Fr.SIZE_IN_BYTES - NUM_BYTES_PER_NOTE_TYPE_ID).some(x => x !== 0) && !noteTypeId.isZero();
 }
 
 /**
