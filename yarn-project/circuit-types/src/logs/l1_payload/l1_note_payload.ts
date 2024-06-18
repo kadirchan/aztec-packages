@@ -43,7 +43,7 @@ export class L1NotePayload extends L1Payload {
   ) {
     super();
     if (!isNoteTypeIdValid(noteTypeId)) {
-      throw new Error('NoteTypeId should occupy only 4 bytes');
+      throw new Error(`NoteTypeId should occupy only ${NUM_BYTES_PER_NOTE_TYPE_ID} bytes`);
     }
   }
 
