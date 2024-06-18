@@ -697,7 +697,9 @@ fn compute_note_type_id(note_type: &str) -> u32 {
     keccak.finalize(&mut result);
 
     // Take the first 4 bytes of the hash and convert them to an integer
-    u32::from_be_bytes(result[0..4].try_into().unwrap())
+    // If you change the following value you have to change NUM_BYTES_PER_NOTE_TYPE_ID in l1_note_payload.ts as well
+    let num_bytes_per_note_type_id = 4;
+    u32::from_be_bytes(result[0..num_bytes_per_note_type_id].try_into().unwrap())
 }
 
 pub fn inject_note_exports(
