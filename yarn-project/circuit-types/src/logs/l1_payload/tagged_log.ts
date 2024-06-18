@@ -78,26 +78,30 @@ export class TaggedLog<Payload extends L1NotePayload | L1EventPayload> {
     ivsk: GrumpkinPrivateKey,
     payloadType: typeof L1NotePayload | typeof L1EventPayload = L1NotePayload,
   ): TaggedLog<L1NotePayload | L1EventPayload> | undefined {
-    // Right now heavily abusing that we will likely fail if bad decryption
-    // as some field will likely end up not being in the field etc.
-    try {
-      if (payloadType === L1EventPayload) {
+    if (payloadType === L1EventPayload) {
+      // Right now heavily abusing that we will likely fail if bad decryption
+      // as some field will likely end up not being in the field etc.
+      try {
         const reader = BufferReader.asReader((data as EncryptedL2Log).data);
         const incomingTag = Fr.fromBuffer(reader);
         const outgoingTag = Fr.fromBuffer(reader);
         // We must pass the entire encrypted log in. The tags are not stripped here from the original data
         const payload = L1EventPayload.decryptAsIncoming(data as EncryptedL2Log, ivsk);
         return new TaggedLog(payload, incomingTag, outgoingTag);
-      } else {
-        const input = Buffer.isBuffer(data) ? data : Buffer.from((data as bigint[]).map((x: bigint) => Number(x)));
-        const reader = BufferReader.asReader(input);
-        const incomingTag = Fr.fromBuffer(reader);
-        const outgoingTag = Fr.fromBuffer(reader);
-        const payload = L1NotePayload.decryptAsIncoming(reader.readToEnd(), ivsk);
-        return new TaggedLog(payload, incomingTag, outgoingTag);
+      } catch (e) {
+        return;
       }
-    } catch (e) {
-      return;
+    } else {
+      const input = Buffer.isBuffer(data) ? data : Buffer.from((data as bigint[]).map((x: bigint) => Number(x)));
+      const reader = BufferReader.asReader(input);
+      const incomingTag = Fr.fromBuffer(reader);
+      const outgoingTag = Fr.fromBuffer(reader);
+      const payload = L1NotePayload.decryptAsIncoming(reader.readToEnd(), ivsk);
+      if (!payload) {
+        // We failed to decrypt the note, return undefined
+        return;
+      }
+      return new TaggedLog(payload, incomingTag, outgoingTag);
     }
   }
 
@@ -116,25 +120,29 @@ export class TaggedLog<Payload extends L1NotePayload | L1EventPayload> {
     ovsk: GrumpkinPrivateKey,
     payloadType: typeof L1NotePayload | typeof L1EventPayload = L1NotePayload,
   ) {
-    // Right now heavily abusing that we will likely fail if bad decryption
-    // as some field will likely end up not being in the field etc.
-    try {
-      if (payloadType === L1EventPayload) {
+    if (payloadType === L1EventPayload) {
+      // Right now heavily abusing that we will likely fail if bad decryption
+      // as some field will likely end up not being in the field etc.
+      try {
         const reader = BufferReader.asReader((data as EncryptedL2Log).data);
         const incomingTag = Fr.fromBuffer(reader);
         const outgoingTag = Fr.fromBuffer(reader);
         const payload = L1EventPayload.decryptAsOutgoing(data as EncryptedL2Log, ovsk);
         return new TaggedLog(payload, incomingTag, outgoingTag);
-      } else {
-        const input = Buffer.isBuffer(data) ? data : Buffer.from((data as bigint[]).map((x: bigint) => Number(x)));
-        const reader = BufferReader.asReader(input);
-        const incomingTag = Fr.fromBuffer(reader);
-        const outgoingTag = Fr.fromBuffer(reader);
-        const payload = L1NotePayload.decryptAsOutgoing(reader.readToEnd(), ovsk);
-        return new TaggedLog(payload, incomingTag, outgoingTag);
+      } catch (e) {
+        return;
       }
-    } catch (e) {
-      return;
+    } else {
+      const input = Buffer.isBuffer(data) ? data : Buffer.from((data as bigint[]).map((x: bigint) => Number(x)));
+      const reader = BufferReader.asReader(input);
+      const incomingTag = Fr.fromBuffer(reader);
+      const outgoingTag = Fr.fromBuffer(reader);
+      const payload = L1NotePayload.decryptAsOutgoing(reader.readToEnd(), ovsk);
+      if (!payload) {
+        // We failed to decrypt the note, return undefined
+        return;
+      }
+      return new TaggedLog(payload, incomingTag, outgoingTag);
     }
   }
 }

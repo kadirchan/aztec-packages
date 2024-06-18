@@ -1,10 +1,21 @@
 import { AztecAddress, type GrumpkinPrivateKey, type KeyValidationRequest, type PublicKey } from '@aztec/circuits.js';
+import { randomBytes } from '@aztec/foundation/crypto';
 import { Fr } from '@aztec/foundation/fields';
 import { BufferReader, serializeToBuffer } from '@aztec/foundation/serialize';
 
 import { EncryptedNoteLogIncomingBody } from './encrypted_log_incoming_body/index.js';
 import { L1Payload } from './l1_payload.js';
 import { Note } from './payload.js';
+
+// Note type id can occupy only 4 bytes. The rest is 0 and is used to determine whether a note was successfully
+// decrypted in tagged_log.ts
+const NUM_BYTES_PER_NOTE_TYPE_ID = 4;
+
+function isNoteTypeIdValid(noteTypeId: Fr): boolean {
+  const buf = noteTypeId.toBuffer();
+  // check that the first 28 bytes are zero
+  return !buf.subarray(0, Fr.SIZE_IN_BYTES - NUM_BYTES_PER_NOTE_TYPE_ID).some(x => x !== 0);
+}
 
 /**
  * A class which wraps note data which is pushed on L1.
@@ -31,6 +42,9 @@ export class L1NotePayload extends L1Payload {
     public noteTypeId: Fr,
   ) {
     super();
+    if (!isNoteTypeIdValid(noteTypeId)) {
+      throw new Error('NoteTypeId should occupy only 4 bytes');
+    }
   }
 
   /**
@@ -62,7 +76,13 @@ export class L1NotePayload extends L1Payload {
    * @returns A random L1NotePayload object.
    */
   static random(contract = AztecAddress.random()) {
-    return new L1NotePayload(Note.random(), contract, Fr.random(), Fr.random());
+    const noteTypeId = Fr.fromBuffer(
+      Buffer.concat([
+        Buffer.alloc(Fr.SIZE_IN_BYTES - NUM_BYTES_PER_NOTE_TYPE_ID),
+        randomBytes(NUM_BYTES_PER_NOTE_TYPE_ID),
+      ]),
+    );
+    return new L1NotePayload(Note.random(), contract, Fr.random(), noteTypeId);
   }
 
   public encrypt(ephSk: GrumpkinPrivateKey, recipient: AztecAddress, ivpk: PublicKey, ovKeys: KeyValidationRequest) {
@@ -98,7 +118,13 @@ export class L1NotePayload extends L1Payload {
       EncryptedNoteLogIncomingBody.fromCiphertext,
     );
 
-    return new L1NotePayload(incomingBody.note, address, incomingBody.storageSlot, incomingBody.noteTypeId);
+    if (isNoteTypeIdValid(incomingBody.noteTypeId)) {
+      // We received valid note type id, hence the encryption was performed correctly
+      return new L1NotePayload(incomingBody.note, address, incomingBody.storageSlot, incomingBody.noteTypeId);
+    }
+
+    // We failed to decrypt the note, return undefined
+    return undefined;
   }
 
   /**
@@ -124,7 +150,13 @@ export class L1NotePayload extends L1Payload {
       EncryptedNoteLogIncomingBody.fromCiphertext,
     );
 
-    return new L1NotePayload(incomingBody.note, address, incomingBody.storageSlot, incomingBody.noteTypeId);
+    if (isNoteTypeIdValid(incomingBody.noteTypeId)) {
+      // We received valid note type id, hence the encryption was performed correctly
+      return new L1NotePayload(incomingBody.note, address, incomingBody.storageSlot, incomingBody.noteTypeId);
+    }
+
+    // We failed to decrypt the note, return undefined
+    return undefined;
   }
 
   public equals(other: L1NotePayload) {
