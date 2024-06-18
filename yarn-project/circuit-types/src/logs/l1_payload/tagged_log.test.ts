@@ -1,6 +1,6 @@
 import { AztecAddress, KeyValidationRequest, computeOvskApp, derivePublicKeyFromSecretKey } from '@aztec/circuits.js';
 import { EventSelector } from '@aztec/foundation/abi';
-import { pedersenHash, randomBytes } from '@aztec/foundation/crypto';
+import { pedersenHash } from '@aztec/foundation/crypto';
 import { Fr, GrumpkinScalar } from '@aztec/foundation/fields';
 
 import { EncryptedL2Log } from '../encrypted_l2_log.js';

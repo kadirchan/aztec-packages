@@ -113,7 +113,12 @@ export class L1EventPayload extends L1Payload {
 
     this.ensureMatchedMaskedContractAddress(address, incomingBody.randomness, encryptedLog.maskedContractAddress);
 
-    return new L1EventPayload(incomingBody.event, address, incomingBody.randomness, EventSelector.fromField(incomingBody.eventTypeId));
+    return new L1EventPayload(
+      incomingBody.event,
+      address,
+      incomingBody.randomness,
+      EventSelector.fromField(incomingBody.eventTypeId),
+    );
   }
 
   /**
@@ -148,7 +153,12 @@ export class L1EventPayload extends L1Payload {
 
     this.ensureMatchedMaskedContractAddress(address, incomingBody.randomness, encryptedLog.maskedContractAddress);
 
-    return new L1EventPayload(incomingBody.event, address, incomingBody.randomness, EventSelector.fromField(incomingBody.eventTypeId));
+    return new L1EventPayload(
+      incomingBody.event,
+      address,
+      incomingBody.randomness,
+      EventSelector.fromField(incomingBody.eventTypeId),
+    );
   }
 }
 
