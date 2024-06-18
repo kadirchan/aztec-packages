@@ -1,11 +1,11 @@
 import { AztecAddress, KeyValidationRequest, computeOvskApp, derivePublicKeyFromSecretKey } from '@aztec/circuits.js';
+import { EventSelector } from '@aztec/foundation/abi';
 import { pedersenHash, randomBytes } from '@aztec/foundation/crypto';
 import { Fr, GrumpkinScalar } from '@aztec/foundation/fields';
 
 import { EncryptedL2Log } from '../encrypted_l2_log.js';
 import { L1EventPayload } from './l1_event_payload.js';
 import { Event } from './payload.js';
-import { EventSelector } from '@aztec/foundation/abi';
 
 describe('L1 Event Payload', () => {
   it('convert to and from buffer', () => {
@@ -31,10 +31,7 @@ describe('L1 Event Payload', () => {
       maskedContractAddress = pedersenHash([contractAddress, randomness], 0);
 
       const eventTypeId = Fr.fromBuffer(
-        Buffer.concat([
-          Buffer.alloc(Fr.SIZE_IN_BYTES - EventSelector.SIZE),
-          randomBytes(EventSelector.SIZE),
-        ]),
+        Buffer.concat([Buffer.alloc(Fr.SIZE_IN_BYTES - EventSelector.SIZE), randomBytes(EventSelector.SIZE)]),
       );
       payload = new L1EventPayload(Event.random(), contractAddress, randomness, eventTypeId);
 

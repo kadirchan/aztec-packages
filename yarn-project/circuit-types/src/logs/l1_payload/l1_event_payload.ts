@@ -1,5 +1,6 @@
 import { AztecAddress, type GrumpkinPrivateKey, type KeyValidationRequest, type PublicKey } from '@aztec/circuits.js';
 import { EventSelector } from '@aztec/foundation/abi';
+import { randomBytes } from '@aztec/foundation/crypto';
 import { Fr } from '@aztec/foundation/fields';
 import { BufferReader, serializeToBuffer } from '@aztec/foundation/serialize';
 
@@ -7,7 +8,6 @@ import { type EncryptedL2Log } from '../encrypted_l2_log.js';
 import { EncryptedEventLogIncomingBody } from './encrypted_log_incoming_body/index.js';
 import { L1Payload } from './l1_payload.js';
 import { Event } from './payload.js';
-import { randomBytes } from '@aztec/foundation/crypto';
 
 function isEventTypeIdValid(eventTypeId: Fr): boolean {
   const buf = eventTypeId.toBuffer();
@@ -69,10 +69,7 @@ export class L1EventPayload extends L1Payload {
    */
   static random() {
     const eventTypeId = Fr.fromBuffer(
-      Buffer.concat([
-        Buffer.alloc(Fr.SIZE_IN_BYTES - EventSelector.SIZE),
-        randomBytes(EventSelector.SIZE),
-      ]),
+      Buffer.concat([Buffer.alloc(Fr.SIZE_IN_BYTES - EventSelector.SIZE), randomBytes(EventSelector.SIZE)]),
     );
     return new L1EventPayload(Event.random(), AztecAddress.random(), Fr.random(), eventTypeId);
   }
