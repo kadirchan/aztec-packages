@@ -36,13 +36,13 @@ describe('L1 Note Payload', () => {
     it('decrypt a log as incoming', () => {
       const recreated = L1NotePayload.decryptAsIncoming(encrypted, ivskM);
 
-      expect(recreated!.toBuffer()).toEqual(payload.toBuffer());
+      expect(recreated.toBuffer()).toEqual(payload.toBuffer());
     });
 
     it('decrypt a log as outgoing', () => {
       const recreated = L1NotePayload.decryptAsOutgoing(encrypted, ovskM);
 
-      expect(recreated!.toBuffer()).toEqual(payload.toBuffer());
+      expect(recreated.toBuffer()).toEqual(payload.toBuffer());
     });
   });
 
