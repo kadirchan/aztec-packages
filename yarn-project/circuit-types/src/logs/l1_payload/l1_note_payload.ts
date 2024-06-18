@@ -118,13 +118,13 @@ export class L1NotePayload extends L1Payload {
       EncryptedNoteLogIncomingBody.fromCiphertext,
     );
 
-    if (isNoteTypeIdValid(incomingBody.noteTypeId)) {
-      // We received valid note type id, hence the encryption was performed correctly
-      return new L1NotePayload(incomingBody.note, address, incomingBody.storageSlot, incomingBody.noteTypeId);
+    if (!isNoteTypeIdValid(incomingBody.noteTypeId)) {
+      // We failed to decrypt the note, return undefined
+      throw new InvalidNoteTypeIdError();
     }
 
-    // We failed to decrypt the note, return undefined
-    return undefined;
+    // We received valid note type id, hence the encryption was performed correctly
+    return new L1NotePayload(incomingBody.note, address, incomingBody.storageSlot, incomingBody.noteTypeId);
   }
 
   /**
@@ -150,13 +150,13 @@ export class L1NotePayload extends L1Payload {
       EncryptedNoteLogIncomingBody.fromCiphertext,
     );
 
-    if (isNoteTypeIdValid(incomingBody.noteTypeId)) {
-      // We received valid note type id, hence the encryption was performed correctly
-      return new L1NotePayload(incomingBody.note, address, incomingBody.storageSlot, incomingBody.noteTypeId);
+    if (!isNoteTypeIdValid(incomingBody.noteTypeId)) {
+      // We failed to decrypt the note, return undefined
+      throw new InvalidNoteTypeIdError();
     }
 
-    // We failed to decrypt the note, return undefined
-    return undefined;
+    // We received valid note type id, hence the encryption was performed correctly
+    return new L1NotePayload(incomingBody.note, address, incomingBody.storageSlot, incomingBody.noteTypeId);
   }
 
   public equals(other: L1NotePayload) {
@@ -166,5 +166,13 @@ export class L1NotePayload extends L1Payload {
       this.storageSlot.equals(other.storageSlot) &&
       this.noteTypeId.equals(other.noteTypeId)
     );
+  }
+}
+
+export class InvalidNoteTypeIdError extends Error {
+  static MESSAGE = 'Invalid note type id';
+  constructor() {
+    super(InvalidNoteTypeIdError.MESSAGE);
+    this.name = 'InvalidNoteTypeIdError';
   }
 }

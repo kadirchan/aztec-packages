@@ -3,8 +3,8 @@ import { Fr } from '@aztec/foundation/fields';
 import { BufferReader, serializeToBuffer } from '@aztec/foundation/serialize';
 
 import { type EncryptedL2Log } from '../encrypted_l2_log.js';
-import { L1EventPayload } from './l1_event_payload.js';
-import { L1NotePayload } from './l1_note_payload.js';
+import { InvalidEventTypeIdError, L1EventPayload } from './l1_event_payload.js';
+import { InvalidNoteTypeIdError, L1NotePayload } from './l1_note_payload.js';
 
 // placeholder value until tagging is implemented
 const PLACEHOLDER_TAG = new Fr(33);
@@ -78,30 +78,33 @@ export class TaggedLog<Payload extends L1NotePayload | L1EventPayload> {
     ivsk: GrumpkinPrivateKey,
     payloadType: typeof L1NotePayload | typeof L1EventPayload = L1NotePayload,
   ): TaggedLog<L1NotePayload | L1EventPayload> | undefined {
-    if (payloadType === L1EventPayload) {
-      // Right now heavily abusing that we will likely fail if bad decryption
-      // as some field will likely end up not being in the field etc.
-      try {
+    try {
+      if (payloadType === L1EventPayload) {
         const reader = BufferReader.asReader((data as EncryptedL2Log).data);
         const incomingTag = Fr.fromBuffer(reader);
         const outgoingTag = Fr.fromBuffer(reader);
         // We must pass the entire encrypted log in. The tags are not stripped here from the original data
         const payload = L1EventPayload.decryptAsIncoming(data as EncryptedL2Log, ivsk);
         return new TaggedLog(payload, incomingTag, outgoingTag);
-      } catch (e) {
-        return;
+      } else {
+        const input = Buffer.isBuffer(data) ? data : Buffer.from((data as bigint[]).map((x: bigint) => Number(x)));
+        const reader = BufferReader.asReader(input);
+        const incomingTag = Fr.fromBuffer(reader);
+        const outgoingTag = Fr.fromBuffer(reader);
+        const payload = L1NotePayload.decryptAsIncoming(reader.readToEnd(), ivsk);
+        return new TaggedLog(payload, incomingTag, outgoingTag);
       }
-    } else {
-      const input = Buffer.isBuffer(data) ? data : Buffer.from((data as bigint[]).map((x: bigint) => Number(x)));
-      const reader = BufferReader.asReader(input);
-      const incomingTag = Fr.fromBuffer(reader);
-      const outgoingTag = Fr.fromBuffer(reader);
-      const payload = L1NotePayload.decryptAsIncoming(reader.readToEnd(), ivsk);
-      if (!payload) {
-        // We failed to decrypt the note, return undefined
-        return;
+    } catch (e: any) {
+      // Following error messages are expected to occur when decryption fails
+      if (
+        !e.message.startsWith('Invalid AztecAddress length') &&
+        e.message !== InvalidNoteTypeIdError.MESSAGE &&
+        e.message !== InvalidEventTypeIdError.MESSAGE
+      ) {
+        // If we encounter an unexpected error, we rethrow it
+        throw e;
       }
-      return new TaggedLog(payload, incomingTag, outgoingTag);
+      return;
     }
   }
 
@@ -120,29 +123,33 @@ export class TaggedLog<Payload extends L1NotePayload | L1EventPayload> {
     ovsk: GrumpkinPrivateKey,
     payloadType: typeof L1NotePayload | typeof L1EventPayload = L1NotePayload,
   ) {
-    if (payloadType === L1EventPayload) {
-      // Right now heavily abusing that we will likely fail if bad decryption
-      // as some field will likely end up not being in the field etc.
-      try {
+    try {
+      if (payloadType === L1EventPayload) {
         const reader = BufferReader.asReader((data as EncryptedL2Log).data);
         const incomingTag = Fr.fromBuffer(reader);
         const outgoingTag = Fr.fromBuffer(reader);
         const payload = L1EventPayload.decryptAsOutgoing(data as EncryptedL2Log, ovsk);
         return new TaggedLog(payload, incomingTag, outgoingTag);
-      } catch (e) {
-        return;
+      } else {
+        const input = Buffer.isBuffer(data) ? data : Buffer.from((data as bigint[]).map((x: bigint) => Number(x)));
+        const reader = BufferReader.asReader(input);
+        const incomingTag = Fr.fromBuffer(reader);
+        const outgoingTag = Fr.fromBuffer(reader);
+        const payload = L1NotePayload.decryptAsOutgoing(reader.readToEnd(), ovsk);
+        return new TaggedLog(payload, incomingTag, outgoingTag);
       }
-    } else {
-      const input = Buffer.isBuffer(data) ? data : Buffer.from((data as bigint[]).map((x: bigint) => Number(x)));
-      const reader = BufferReader.asReader(input);
-      const incomingTag = Fr.fromBuffer(reader);
-      const outgoingTag = Fr.fromBuffer(reader);
-      const payload = L1NotePayload.decryptAsOutgoing(reader.readToEnd(), ovsk);
-      if (!payload) {
-        // We failed to decrypt the note, return undefined
-        return;
+    } catch (e: any) {
+      // Following error messages are expected to occur when decryption fails
+      if (
+        !e.message.startsWith('Invalid AztecAddress length') &&
+        !e.message.endsWith('is greater or equal to field modulus.') &&
+        e.message !== InvalidNoteTypeIdError.MESSAGE &&
+        e.message !== InvalidEventTypeIdError.MESSAGE
+      ) {
+        // If we encounter an unexpected error, we rethrow it
+        throw e;
       }
-      return new TaggedLog(payload, incomingTag, outgoingTag);
+      return;
     }
   }
 }

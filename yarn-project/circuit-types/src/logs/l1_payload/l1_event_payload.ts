@@ -1,4 +1,5 @@
 import { AztecAddress, type GrumpkinPrivateKey, type KeyValidationRequest, type PublicKey } from '@aztec/circuits.js';
+import { EventSelector } from '@aztec/foundation/abi';
 import { Fr } from '@aztec/foundation/fields';
 import { BufferReader, serializeToBuffer } from '@aztec/foundation/serialize';
 
@@ -6,6 +7,12 @@ import { type EncryptedL2Log } from '../encrypted_l2_log.js';
 import { EncryptedEventLogIncomingBody } from './encrypted_log_incoming_body/index.js';
 import { L1Payload } from './l1_payload.js';
 import { Event } from './payload.js';
+
+function isEventTypeIdValid(eventTypeId: Fr): boolean {
+  const buf = eventTypeId.toBuffer();
+  // check that the first 28 bytes are zero
+  return !buf.subarray(0, Fr.SIZE_IN_BYTES - EventSelector.SIZE).some(x => x !== 0);
+}
 
 /**
  * A class which wraps event data which is pushed on L1.
@@ -100,6 +107,10 @@ export class L1EventPayload extends L1Payload {
       EncryptedEventLogIncomingBody.fromCiphertext,
     );
 
+    if (!isEventTypeIdValid(incomingBody.eventTypeId)) {
+      throw new InvalidEventTypeIdError();
+    }
+
     this.ensureMatchedMaskedContractAddress(address, incomingBody.randomness, encryptedLog.maskedContractAddress);
 
     return new L1EventPayload(incomingBody.event, address, incomingBody.randomness, incomingBody.eventTypeId);
@@ -131,8 +142,20 @@ export class L1EventPayload extends L1Payload {
       EncryptedEventLogIncomingBody.fromCiphertext,
     );
 
+    if (!isEventTypeIdValid(incomingBody.eventTypeId)) {
+      throw new InvalidEventTypeIdError();
+    }
+
     this.ensureMatchedMaskedContractAddress(address, incomingBody.randomness, encryptedLog.maskedContractAddress);
 
     return new L1EventPayload(incomingBody.event, address, incomingBody.randomness, incomingBody.eventTypeId);
+  }
+}
+
+export class InvalidEventTypeIdError extends Error {
+  static MESSAGE = 'Invalid event type id';
+  constructor() {
+    super(InvalidEventTypeIdError.MESSAGE);
+    this.name = 'InvalidEventTypeIdError';
   }
 }
