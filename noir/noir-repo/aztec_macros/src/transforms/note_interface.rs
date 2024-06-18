@@ -527,7 +527,7 @@ fn generate_note_exports_global(
     let struct_source = format!(
         "
         #[abi(notes)]
-        global {0}_EXPORTS: (Field, str<{1}>) = ({2},\"{0}\");
+        global {0}_EXPORTS: (Field, str<{1}>) = (0x{2},\"{0}\");
         ",
         note_type,
         note_type.len(),
@@ -778,8 +778,7 @@ pub fn inject_note_exports(
             }?;
             let global = generate_note_exports_global(
                 &note.borrow().name.0.contents,
-                // Convert to u128 to avoid Field formatting as power of 2
-                &note_id_value.to_u128().to_string(),
+                &note_id_value.to_hex(),
             )
             .map_err(|err| (err, file_id))?;
 
