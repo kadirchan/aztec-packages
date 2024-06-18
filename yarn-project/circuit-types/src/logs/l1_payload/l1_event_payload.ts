@@ -7,6 +7,7 @@ import { type EncryptedL2Log } from '../encrypted_l2_log.js';
 import { EncryptedEventLogIncomingBody } from './encrypted_log_incoming_body/index.js';
 import { L1Payload } from './l1_payload.js';
 import { Event } from './payload.js';
+import { randomBytes } from '@aztec/foundation/crypto';
 
 function isEventTypeIdValid(eventTypeId: Fr): boolean {
   const buf = eventTypeId.toBuffer();
@@ -67,7 +68,13 @@ export class L1EventPayload extends L1Payload {
    * @returns A random L1EventPayload object.
    */
   static random() {
-    return new L1EventPayload(Event.random(), AztecAddress.random(), Fr.random(), Fr.random());
+    const eventTypeId = Fr.fromBuffer(
+      Buffer.concat([
+        Buffer.alloc(Fr.SIZE_IN_BYTES - EventSelector.SIZE),
+        randomBytes(EventSelector.SIZE),
+      ]),
+    );
+    return new L1EventPayload(Event.random(), AztecAddress.random(), Fr.random(), eventTypeId);
   }
 
   public encrypt(ephSk: GrumpkinPrivateKey, recipient: AztecAddress, ivpk: PublicKey, ovKeys: KeyValidationRequest) {
