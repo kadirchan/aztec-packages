@@ -118,7 +118,7 @@ describe('External Calls', () => {
       expect(retValue).toEqual([new Field(1n), new Field(2n)]);
 
       // Check that the storage call has been merged into the parent journal
-      const { currentStorageValue } = context.persistableState.flush();
+      const { currentStorageValue } = context.persistableState.getTrace()();
       expect(currentStorageValue.size).toEqual(1);
 
       const nestedContractWrites = currentStorageValue.get(addr.toBigInt());

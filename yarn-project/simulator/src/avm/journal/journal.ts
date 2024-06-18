@@ -1,85 +1,20 @@
-// TODO(5818): Rename file and all uses of "journal"
-import { UnencryptedL2Log } from '@aztec/circuit-types';
-import {
-  AztecAddress,
-  ContractStorageRead,
-  ContractStorageUpdateRequest,
-  EthAddress,
-  L2ToL1Message,
-  LogHash,
-  NoteHash,
-  Nullifier,
-  ReadRequest,
-} from '@aztec/circuits.js';
-import { EventSelector } from '@aztec/foundation/abi';
+import { AztecAddress } from '@aztec/circuits.js';
 import { Fr } from '@aztec/foundation/fields';
 import { type DebugLogger, createDebugLogger } from '@aztec/foundation/log';
 import { SerializableContractInstance } from '@aztec/types/contracts';
 
-import { type PublicExecutionResult } from '../../index.js';
 import { type HostStorage } from './host_storage.js';
 import { Nullifiers } from './nullifiers.js';
 import { PublicStorage } from './public_storage.js';
-import { WorldStateAccessTrace } from './trace.js';
-import {
-  type TracedContractInstance,
-  type TracedL1toL2MessageCheck,
-  type TracedNoteHash,
-  type TracedNoteHashCheck,
-  type TracedNullifier,
-  type TracedNullifierCheck,
-  type TracedPublicStorageRead,
-  type TracedPublicStorageWrite,
-  type TracedUnencryptedL2Log,
-} from './trace_types.js';
-
-// TODO:(5818): do we need this type anymore?
-/**
- * Data held within the journal
- */
-export type JournalData = {
-  storageWrites: TracedPublicStorageWrite[];
-  storageReads: TracedPublicStorageRead[];
-
-  noteHashChecks: TracedNoteHashCheck[];
-  newNoteHashes: TracedNoteHash[];
-  nullifierChecks: TracedNullifierCheck[];
-  newNullifiers: TracedNullifier[];
-  l1ToL2MessageChecks: TracedL1toL2MessageCheck[];
-
-  newL1Messages: L2ToL1Message[];
-  newLogs: UnencryptedL2Log[];
-  newLogsHashes: TracedUnencryptedL2Log[];
-  /** contract address -\> key -\> value */
-  currentStorageValue: Map<bigint, Map<bigint, Fr>>;
-
-  sideEffectCounter: number;
-};
-
-// TRANSITIONAL: This should be removed once the kernel handles and entire enqueued call per circuit
-export type PartialPublicExecutionResult = {
-  noteHashReadRequests: ReadRequest[];
-  nullifierReadRequests: ReadRequest[];
-  nullifierNonExistentReadRequests: ReadRequest[];
-  l1ToL2MsgReadRequests: ReadRequest[];
-  newNoteHashes: NoteHash[];
-  newL2ToL1Messages: L2ToL1Message[];
-  startSideEffectCounter: number;
-  newNullifiers: Nullifier[];
-  contractStorageReads: ContractStorageRead[];
-  contractStorageUpdateRequests: ContractStorageUpdateRequest[];
-  unencryptedLogsHashes: LogHash[];
-  unencryptedLogs: UnencryptedL2Log[];
-  allUnencryptedLogs: UnencryptedL2Log[];
-  nestedExecutions: PublicExecutionResult[];
-};
+import { AvmSideEffectTrace, TraceNestedCallArgs } from './trace.js';
+import { TracedContractInstance } from './trace_types.js';
 
 /**
  * A class to manage persistable AVM state for contract calls.
  * Maintains a cache of the current world state,
- * a trace of all world state accesses, and a list of accrued substate items.
+ * a trace of all side effects.
  *
- * The simulator should make any world state and accrued substate queries through this object.
+ * The simulator should make any world state / tree queries through this object.
  *
  * Manages merging of successful/reverted child state into current state.
  */
@@ -88,45 +23,20 @@ export class AvmPersistableStateManager {
   /** Reference to node storage */
   public readonly hostStorage: HostStorage;
 
-  // TODO(5818): make members private once this is not used in transitional_adaptors.ts.
   /** World State */
   /** Public storage, including cached writes */
-  public publicStorage: PublicStorage;
+  private publicStorage: PublicStorage;
   /** Nullifier set, including cached/recently-emitted nullifiers */
-  public nullifiers: Nullifiers;
+  private nullifiers: Nullifiers;
 
-  /** World State Access Trace */
-  public trace: WorldStateAccessTrace;
-
-  /** Accrued Substate **/
-  public newL1Messages: L2ToL1Message[] = [];
-  public newLogs: UnencryptedL2Log[] = [];
-
-  // TRANSITIONAL: This should be removed once the kernel handles and entire enqueued call per circuit
-  public transitionalExecutionResult: PartialPublicExecutionResult;
+  /** Side Effect Trace */
+  public trace: AvmSideEffectTrace;
 
   constructor(hostStorage: HostStorage, parent?: AvmPersistableStateManager) {
     this.hostStorage = hostStorage;
     this.publicStorage = new PublicStorage(hostStorage.publicStateDb, parent?.publicStorage);
     this.nullifiers = new Nullifiers(hostStorage.commitmentsDb, parent?.nullifiers);
-    this.trace = new WorldStateAccessTrace(parent?.trace);
-
-    this.transitionalExecutionResult = {
-      noteHashReadRequests: [],
-      nullifierReadRequests: [],
-      nullifierNonExistentReadRequests: [],
-      l1ToL2MsgReadRequests: [],
-      newNoteHashes: [],
-      newL2ToL1Messages: [],
-      startSideEffectCounter: this.trace.counter,
-      newNullifiers: [],
-      contractStorageReads: [],
-      contractStorageUpdateRequests: [],
-      unencryptedLogsHashes: [],
-      unencryptedLogs: [],
-      allUnencryptedLogs: [],
-      nestedExecutions: [],
-    };
+    this.trace = new AvmSideEffectTrace(parent?.trace);
   }
 
   /**
@@ -147,13 +57,6 @@ export class AvmPersistableStateManager {
     this.log.debug(`Storage write (address=${storageAddress}, slot=${slot}): value=${value}`);
     // Cache storage writes for later reference/reads
     this.publicStorage.write(storageAddress, slot, value);
-
-    // TRANSITIONAL: This should be removed once the kernel handles and entire enqueued call per circuit
-    this.transitionalExecutionResult.contractStorageUpdateRequests.push(
-      new ContractStorageUpdateRequest(slot, value, this.trace.counter, storageAddress),
-    );
-
-    // Trace all storage writes (even reverted ones)
     this.trace.tracePublicStorageWrite(storageAddress, slot, value);
   }
 
@@ -169,14 +72,19 @@ export class AvmPersistableStateManager {
     this.log.debug(
       `Storage read  (address=${storageAddress}, slot=${slot}): value=${value}, exists=${exists}, cached=${cached}`,
     );
-
-    // TRANSITIONAL: This should be removed once the kernel handles and entire enqueued call per circuit
-    this.transitionalExecutionResult.contractStorageReads.push(
-      new ContractStorageRead(slot, value, this.trace.counter, storageAddress),
-    );
-
-    // We want to keep track of all performed reads (even reverted ones)
     this.trace.tracePublicStorageRead(storageAddress, slot, value, exists, cached);
+    return Promise.resolve(value);
+  }
+
+  /**
+   * Read from public storage, don't trace the read.
+   *
+   * @param storageAddress - the address of the contract whose storage is being read from
+   * @param slot - the slot in the contract's storage being read from
+   * @returns the latest value written to slot, or 0 if never written to before
+   */
+  public async peekStorage(storageAddress: Fr, slot: Fr): Promise<Fr> {
+    const { value } = await this.publicStorage.read(storageAddress, slot);
     return Promise.resolve(value);
   }
 
@@ -193,10 +101,6 @@ export class AvmPersistableStateManager {
     const gotLeafIndex = await this.hostStorage.commitmentsDb.getCommitmentIndex(noteHash);
     const exists = gotLeafIndex === leafIndex.toBigInt();
     this.log.debug(`noteHashes(${storageAddress})@${noteHash} ?? leafIndex: ${leafIndex}, exists: ${exists}.`);
-
-    // TODO: include exists here also - This can for sure come from the trace???
-    this.transitionalExecutionResult.noteHashReadRequests.push(new ReadRequest(noteHash, this.trace.counter));
-
     this.trace.traceNoteHashCheck(storageAddress, noteHash, exists, leafIndex);
     return Promise.resolve(exists);
   }
@@ -206,9 +110,6 @@ export class AvmPersistableStateManager {
    * @param noteHash - the unsiloed note hash to write
    */
   public writeNoteHash(storageAddress: Fr, noteHash: Fr) {
-    // TRANSITIONAL: This should be removed once the kernel handles and entire enqueued call per circuit
-    this.transitionalExecutionResult.newNoteHashes.push(new NoteHash(noteHash, this.trace.counter));
-
     this.log.debug(`noteHashes(${storageAddress}) += @${noteHash}.`);
     this.trace.traceNewNoteHash(storageAddress, noteHash);
   }
@@ -224,16 +125,6 @@ export class AvmPersistableStateManager {
     this.log.debug(
       `nullifiers(${storageAddress})@${nullifier} ?? leafIndex: ${leafIndex}, pending: ${isPending}, exists: ${exists}.`,
     );
-
-    // TRANSITIONAL: This should be removed once the kernel handles and entire enqueued call per circuit
-    if (exists) {
-      this.transitionalExecutionResult.nullifierReadRequests.push(new ReadRequest(nullifier, this.trace.counter));
-    } else {
-      this.transitionalExecutionResult.nullifierNonExistentReadRequests.push(
-        new ReadRequest(nullifier, this.trace.counter),
-      );
-    }
-
     this.trace.traceNullifierCheck(storageAddress, nullifier, exists, isPending, leafIndex);
     return Promise.resolve(exists);
   }
@@ -244,11 +135,6 @@ export class AvmPersistableStateManager {
    * @param nullifier - the unsiloed nullifier to write
    */
   public async writeNullifier(storageAddress: Fr, nullifier: Fr) {
-    // TRANSITIONAL: This should be removed once the kernel handles and entire enqueued call per circuit
-    this.transitionalExecutionResult.newNullifiers.push(
-      new Nullifier(nullifier, this.trace.counter, /*noteHash=*/ Fr.ZERO),
-    );
-
     this.log.debug(`nullifiers(${storageAddress}) += ${nullifier}.`);
     // Cache pending nullifiers for later access
     await this.nullifiers.append(storageAddress, nullifier);
@@ -268,9 +154,6 @@ export class AvmPersistableStateManager {
     this.log.debug(
       `l1ToL2Messages(@${msgLeafIndex}) ?? exists: ${exists}, expected: ${msgHash}, found: ${valueAtIndex}.`,
     );
-
-    this.transitionalExecutionResult.l1ToL2MsgReadRequests.push(new ReadRequest(msgHash, this.trace.counter));
-
     this.trace.traceL1ToL2MessageCheck(msgHash, msgLeafIndex, exists);
     return Promise.resolve(exists);
   }
@@ -280,40 +163,27 @@ export class AvmPersistableStateManager {
    * @param recipient - L1 contract address to send the message to.
    * @param content - Message content.
    */
-  public writeL1Message(recipient: EthAddress | Fr, content: Fr) {
+  public writeL2ToL1Message(recipient: Fr, content: Fr) {
     this.log.debug(`L1Messages(${recipient}) += ${content}.`);
-    const recipientAddress = recipient instanceof EthAddress ? recipient : EthAddress.fromField(recipient);
-    const message = new L2ToL1Message(recipientAddress, content, 0);
-    this.newL1Messages.push(message);
-
-    // TRANSITIONAL: This should be removed once the kernel handles and entire enqueued call per circuit
-    this.transitionalExecutionResult.newL2ToL1Messages.push(message);
+    this.trace.traceNewL2ToL1Message(recipient, content);
   }
 
-  public writeLog(contractAddress: Fr, event: Fr, log: Fr[]) {
+  /**
+   * Write an unencrypted log
+   * @param contractAddress - address of the contract that emitted the log
+   * @param event - log event selector
+   * @param log - log contents
+   */
+  public writeUnencryptedLog(contractAddress: Fr, event: Fr, log: Fr[]) {
     this.log.debug(`UnencryptedL2Log(${contractAddress}) += event ${event} with ${log.length} fields.`);
-    const ulog = new UnencryptedL2Log(
-      AztecAddress.fromField(contractAddress),
-      EventSelector.fromField(event),
-      Buffer.concat(log.map(f => f.toBuffer())),
-    );
-    const logHash = Fr.fromBuffer(ulog.hash());
-
-    // TRANSITIONAL: This should be removed once the kernel handles and entire enqueued call per circuit
-    this.transitionalExecutionResult.unencryptedLogs.push(ulog);
-    this.transitionalExecutionResult.allUnencryptedLogs.push(ulog);
-    // this duplicates exactly what happens in the trace just for the purpose of transitional integration with the kernel
-    this.transitionalExecutionResult.unencryptedLogsHashes.push(
-      // TODO(6578): explain magic number 4 here
-      new LogHash(logHash, this.trace.counter, new Fr(ulog.length + 4)),
-    );
-    // TODO(6206): likely need to track this here and not just in the transitional logic.
-
-    // TODO(6205): why are logs pushed here but logs hashes are traced?
-    this.newLogs.push(ulog);
-    this.trace.traceNewLog(logHash);
+    this.trace.traceUnencryptedLog(contractAddress, event, log);
   }
 
+  /**
+   * Get a contract instance.
+   * @param contractAddress - address of the contract instance to retrieve.
+   * @returns the contract instance with an "exists" flag
+   */
   public async getContractInstance(contractAddress: Fr): Promise<TracedContractInstance> {
     let exists = true;
     const aztecAddress = AztecAddress.fromField(contractAddress);
@@ -328,53 +198,24 @@ export class AvmPersistableStateManager {
   }
 
   /**
-   * Accept nested world state modifications, merging in its trace and accrued substate
+   * Accept nested world state modifications
    */
-  public acceptNestedCallState(nestedJournal: AvmPersistableStateManager) {
-    // Merge Public Storage
-    this.publicStorage.acceptAndMerge(nestedJournal.publicStorage);
-
-    // Merge World State Access Trace
-    this.trace.acceptAndMerge(nestedJournal.trace);
-
-    // Accrued Substate
-    this.newL1Messages.push(...nestedJournal.newL1Messages);
-    this.newLogs.push(...nestedJournal.newLogs);
-
-    // TRANSITIONAL: This should be removed once the kernel handles and entire enqueued call per circuit
-    this.transitionalExecutionResult.allUnencryptedLogs.push(
-      ...nestedJournal.transitionalExecutionResult.allUnencryptedLogs,
-    );
+  public acceptNestedCallState(nestedState: AvmPersistableStateManager) {
+    this.publicStorage.acceptAndMerge(nestedState.publicStorage);
+    this.nullifiers.acceptAndMerge(nestedState.nullifiers);
   }
 
   /**
-   * Reject nested world state, merging in its trace, but not accepting any state modifications
+   * Accept the nested call's state and trace the nested call
    */
-  public rejectNestedCallState(nestedJournal: AvmPersistableStateManager) {
-    // Merge World State Access Trace
-    this.trace.acceptAndMerge(nestedJournal.trace);
+  public processNestedCall(nestedState: AvmPersistableStateManager, success: boolean, ...args: TraceNestedCallArgs) {
+    if (success) {
+      this.acceptNestedCallState(nestedState);
+    }
+    this.trace.traceNestedCall(nestedState.getTrace(), ...args);
   }
 
-  // TODO:(5818): do we need this type anymore?
-  /**
-   * Access the current state of the journal
-   *
-   * @returns a JournalData object
-   */
-  public flush(): JournalData {
-    return {
-      noteHashChecks: this.trace.noteHashChecks,
-      newNoteHashes: this.trace.newNoteHashes,
-      nullifierChecks: this.trace.nullifierChecks,
-      newNullifiers: this.trace.newNullifiers,
-      l1ToL2MessageChecks: this.trace.l1ToL2MessageChecks,
-      newL1Messages: this.newL1Messages,
-      newLogs: this.newLogs,
-      newLogsHashes: this.trace.newLogsHashes,
-      currentStorageValue: this.publicStorage.getCache().cachePerContract,
-      storageReads: this.trace.publicStorageReads,
-      storageWrites: this.trace.publicStorageWrites,
-      sideEffectCounter: this.trace.counter,
-    };
+  public getTrace(): AvmSideEffectTrace {
+    return this.trace;
   }
 }

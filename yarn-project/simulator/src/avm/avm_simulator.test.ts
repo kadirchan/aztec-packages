@@ -328,8 +328,14 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.output).toEqual([/*exists=false*/ new Fr(0)]);
 
       // Note hash existence check should be in trace
-      const trace = context.persistableState.flush();
-      expect(trace.noteHashChecks).toEqual([expect.objectContaining({ noteHash, leafIndex, exists: false })]);
+      const trace = context.persistableState.getTrace();
+      expect(trace.noteHashReadRequests).toEqual([
+        expect.objectContaining({
+          value: noteHash,
+          counter: expect.any(Number),
+        }),
+      ]);
+      expect(trace.avmCircuitHints.noteHashExists.items[0].value).toEqual(new Fr(0)); // exists false
     });
 
     it(`Note hash exists (it does)`, async () => {
@@ -349,35 +355,14 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.output).toEqual([/*exists=true*/ new Fr(1)]);
 
       // Note hash existence check should be in trace
-      const trace = context.persistableState.flush();
-      expect(trace.noteHashChecks).toEqual([expect.objectContaining({ noteHash, leafIndex, exists: true })]);
-    });
-
-    it(`Emit unencrypted logs (should be traced)`, async () => {
-      const context = initContext();
-      const bytecode = getAvmTestContractBytecode('emit_unencrypted_log');
-      const results = await new AvmSimulator(context).executeBytecode(bytecode);
-
-      expect(results.reverted).toBe(false);
-
-      const expectedFields = [new Fr(10), new Fr(20), new Fr(30)];
-      const expectedString = 'Hello, world!'.split('').map(c => new Fr(c.charCodeAt(0)));
-      const expectedCompressedString = Buffer.from(
-        '\0A long time ago, in a galaxy fa' + '\0r far away...\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0',
-      );
-      expect(context.persistableState.flush().newLogs).toEqual([
-        new UnencryptedL2Log(
-          context.environment.address,
-          new EventSelector(5),
-          Buffer.concat(expectedFields.map(f => f.toBuffer())),
-        ),
-        new UnencryptedL2Log(
-          context.environment.address,
-          new EventSelector(5),
-          Buffer.concat(expectedString.map(f => f.toBuffer())),
-        ),
-        new UnencryptedL2Log(context.environment.address, new EventSelector(5), expectedCompressedString),
+      const trace = context.persistableState.getTrace();
+      expect(trace.noteHashReadRequests).toEqual([
+        expect.objectContaining({
+          value: noteHash,
+          counter: expect.any(Number),
+        }),
       ]);
+      expect(trace.avmCircuitHints.noteHashExists.items[0].value).toEqual(new Fr(1)); // exists true
     });
 
     it(`Emit note hash (should be traced)`, async () => {
@@ -390,10 +375,11 @@ describe('AVM simulator: transpiled Noir contracts', () => {
 
       expect(results.reverted).toBe(false);
 
-      expect(context.persistableState.flush().newNoteHashes).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.newNoteHashes).toEqual([
         expect.objectContaining({
-          storageAddress: context.environment.storageAddress,
-          noteHash: utxo,
+          value: utxo,
+          counter: expect.any(Number),
         }),
       ]);
     });
@@ -408,10 +394,11 @@ describe('AVM simulator: transpiled Noir contracts', () => {
 
       expect(results.reverted).toBe(false);
 
-      expect(context.persistableState.flush().newNullifiers).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.newNullifiers).toEqual([
         expect.objectContaining({
-          storageAddress: context.environment.storageAddress,
-          nullifier: utxo,
+          value: utxo,
+          counter: expect.any(Number),
         }),
       ]);
     });
@@ -428,17 +415,15 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.output).toEqual([/*exists=false*/ new Fr(0)]);
 
       // Nullifier existence check should be in trace
-      const trace = context.persistableState.flush();
-      expect(trace.nullifierChecks).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.nullifierReadRequests).toEqual([])
+      expect(trace.nullifierNonExistentReadRequests).toEqual([
         expect.objectContaining({
-          storageAddress: context.environment.storageAddress,
-          nullifier: utxo,
-          exists: false,
-          counter: expect.any(Fr),
-          isPending: false,
-          leafIndex: expect.any(Fr),
+          value: utxo,
+          counter: expect.any(Number),
         }),
       ]);
+      expect(trace.avmCircuitHints.nullifierExists.items[0].value).toEqual(new Fr(0)); // exists false
     });
 
     it(`Nullifier exists (it does)`, async () => {
@@ -457,17 +442,14 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.output).toEqual([/*exists=true*/ new Fr(1)]);
 
       // Nullifier existence check should be in trace
-      const trace = context.persistableState.flush();
-      expect(trace.nullifierChecks).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.nullifierReadRequests).toEqual([
         expect.objectContaining({
-          storageAddress: context.environment.storageAddress,
-          nullifier: utxo,
-          exists: true,
-          counter: expect.any(Fr),
-          isPending: false,
-          leafIndex: expect.any(Fr),
+          value: utxo,
+          counter: expect.any(Number),
         }),
       ]);
+      expect(trace.avmCircuitHints.nullifierExists.items[0].value).toEqual(new Fr(1)); // exists true
     });
 
     it(`Emits a nullifier and checks its existence`, async () => {
@@ -480,23 +462,20 @@ describe('AVM simulator: transpiled Noir contracts', () => {
 
       expect(results.reverted).toBe(false);
       // Nullifier existence check should be in trace
-      const trace = context.persistableState.flush();
+      const trace = context.persistableState.getTrace();
       expect(trace.newNullifiers).toEqual([
         expect.objectContaining({
-          storageAddress: context.environment.storageAddress,
-          nullifier: utxo,
+          value: utxo,
+          counter: expect.any(Number),
         }),
       ]);
-      expect(trace.nullifierChecks).toEqual([
+      expect(trace.nullifierReadRequests).toEqual([
         expect.objectContaining({
-          storageAddress: context.environment.storageAddress,
-          nullifier: utxo,
-          exists: true,
-          counter: expect.any(Fr),
-          isPending: true,
-          leafIndex: expect.any(Fr),
+          value: utxo,
+          counter: expect.any(Number),
         }),
       ]);
+      expect(trace.avmCircuitHints.nullifierExists.items[0].value).toEqual(new Fr(1)); // exists true
     });
 
     it(`Emits same nullifier twice (should fail)`, async () => {
@@ -510,16 +489,17 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.reverted).toBe(true);
       expect(results.revertReason?.message).toMatch(/Attempted to emit duplicate nullifier/);
       // Only the first nullifier should be in the trace, second one failed to add
-      expect(context.persistableState.flush().newNullifiers).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.newNullifiers).toEqual([
         expect.objectContaining({
-          storageAddress: context.environment.storageAddress,
-          nullifier: utxo,
+          value: utxo,
+          counter: expect.any(Number),
         }),
       ]);
     });
   });
 
-  describe('Test tree access (l1ToL2 messages)', () => {
+  describe('Test tree access (l1ToL2 and l2ToL1 messages)', () => {
     it(`Message exists (it does not)`, async () => {
       const msgHash = new Fr(42);
       const leafIndex = new Fr(24);
@@ -532,9 +512,14 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.reverted).toBe(false);
       expect(results.output).toEqual([/*exists=false*/ new Fr(0)]);
       // Message existence check should be in trace
-      const trace = context.persistableState.flush();
-      expect(trace.l1ToL2MessageChecks.length).toEqual(1);
-      expect(trace.l1ToL2MessageChecks[0].exists).toEqual(false);
+      const trace = context.persistableState.getTrace();
+      expect(trace.l1ToL2MsgReadRequests).toEqual([
+        expect.objectContaining({
+          value: msgHash,
+          counter: expect.any(Number),
+        }),
+      ]);
+      expect(trace.avmCircuitHints.l1ToL2MessageExists.items[0].value).toEqual(new Fr(0)); // exists false
     });
 
     it(`Message exists (it does)`, async () => {
@@ -550,15 +535,48 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.reverted).toBe(false);
       expect(results.output).toEqual([/*exists=false*/ new Fr(1)]);
       // Message existence check should be in trace
-      const trace = context.persistableState.flush();
-      expect(trace.l1ToL2MessageChecks.length).toEqual(1);
-      expect(trace.l1ToL2MessageChecks[0].exists).toEqual(true);
+      const trace = context.persistableState.getTrace();
+      expect(trace.l1ToL2MsgReadRequests).toEqual([
+        expect.objectContaining({
+          value: msgHash,
+          counter: expect.any(Number),
+        }),
+      ]);
+      expect(trace.avmCircuitHints.l1ToL2MessageExists.items[0].value).toEqual(new Fr(1)); // exists true
     });
+
+    it(`Emit unencrypted logs (should be traced)`, async () => {
+      const context = initContext();
+      const bytecode = getAvmTestContractBytecode('emit_unencrypted_log');
+      const results = await new AvmSimulator(context).executeBytecode(bytecode);
+
+      expect(results.reverted).toBe(false);
+
+      const expectedFields = [new Fr(10), new Fr(20), new Fr(30)];
+      const expectedString = 'Hello, world!'.split('').map(c => new Fr(c.charCodeAt(0)));
+      const expectedCompressedString = Buffer.from(
+        '\0A long time ago, in a galaxy fa' + '\0r far away...\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0',
+      );
+      expect(context.persistableState.getTrace().unencryptedLogs).toEqual([
+        new UnencryptedL2Log(
+          context.environment.address,
+          new EventSelector(5),
+          Buffer.concat(expectedFields.map(f => f.toBuffer())),
+        ),
+        new UnencryptedL2Log(
+          context.environment.address,
+          new EventSelector(5),
+          Buffer.concat(expectedString.map(f => f.toBuffer())),
+        ),
+        new UnencryptedL2Log(context.environment.address, new EventSelector(5), expectedCompressedString),
+      ]);
+    });
+
   });
 
   describe('Storage accesses', () => {
     it('Should set value in storage (single)', async () => {
-      const slot = 1n;
+      const slotNumber = 1n;
       const address = AztecAddress.fromField(new Fr(420));
       const value = new Fr(88);
       const calldata = [value];
@@ -572,26 +590,24 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.reverted).toBe(false);
 
       // World state
-      const worldState = context.persistableState.flush();
-      const storageSlot = worldState.currentStorageValue.get(address.toBigInt())!;
-      const adminSlotValue = storageSlot.get(slot);
-      expect(adminSlotValue).toEqual(value);
+      const trace = context.persistableState.getTrace();
+      expect(await context.persistableState.peekStorage(address, new Fr(slotNumber))).toEqual(value);
 
       // Tracing
-      expect(worldState.storageWrites).toEqual([
+      expect(trace.contractStorageUpdateRequests).toEqual([
         expect.objectContaining({
-          storageAddress: address,
-          slot: new Fr(slot),
-          value: value,
+          storageSlot: new Fr(slotNumber),
+          newValue: value,
+          contractAddress: address,
         }),
       ]);
     });
 
     it('Should read value in storage (single)', async () => {
-      const slot = 1n;
+      const slotNumber = 1n;
       const value = new Fr(12345);
       const address = AztecAddress.fromField(new Fr(420));
-      const storage = new Map([[slot, value]]);
+      const storage = new Map([[slotNumber, value]]);
 
       const context = initContext({
         env: initExecutionEnvironment({ storageAddress: address }),
@@ -607,19 +623,19 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.output).toEqual([value]);
 
       // Tracing
-      const worldState = context.persistableState.flush();
-      expect(worldState.storageReads).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.contractStorageReads).toEqual([
         expect.objectContaining({
-          storageAddress: address,
-          slot: new Fr(slot),
-          value: value,
-          exists: true,
+          storageSlot: new Fr(slotNumber),
+          currentValue: value,
+          contractAddress: address,
         }),
       ]);
+      expect(trace.avmCircuitHints.storageValues.items[0].value).toEqual(value);
     });
 
     it('Should set and read a value from storage (single)', async () => {
-      const slot = 1n;
+      const slotNumber = 1n;
       const value = new Fr(12345);
       const address = AztecAddress.fromField(new Fr(420));
       const calldata = [value];
@@ -634,26 +650,26 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.output).toEqual([value]);
 
       // Test read trace
-      const worldState = context.persistableState.flush();
-      expect(worldState.storageReads).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.contractStorageReads).toEqual([
         expect.objectContaining({
-          storageAddress: address,
-          slot: new Fr(slot),
-          value: value,
-          exists: true,
+          storageSlot: new Fr(slotNumber),
+          currentValue: value,
+          contractAddress: address,
         }),
       ]);
-      expect(worldState.storageWrites).toEqual([
+      expect(trace.avmCircuitHints.storageValues.items[0].value).toEqual(value);
+      expect(trace.contractStorageUpdateRequests).toEqual([
         expect.objectContaining({
-          storageAddress: address,
-          slot: new Fr(slot),
-          value: value,
+          storageSlot: new Fr(slotNumber),
+          newValue: value,
+          contractAddress: address,
         }),
       ]);
     });
 
     it('Should set a value in storage (list)', async () => {
-      const slot = 2n;
+      const slotNumber = 2n;
       const sender = AztecAddress.fromField(new Fr(1));
       const address = AztecAddress.fromField(new Fr(420));
       const calldata = [new Fr(1), new Fr(2)];
@@ -666,22 +682,21 @@ describe('AVM simulator: transpiled Noir contracts', () => {
 
       expect(results.reverted).toBe(false);
 
-      const worldState = context.persistableState.flush();
-      const storageSlot = worldState.currentStorageValue.get(address.toBigInt())!;
-      expect(storageSlot.get(slot)).toEqual(calldata[0]);
-      expect(storageSlot.get(slot + 1n)).toEqual(calldata[1]);
+      const trace = context.persistableState.getTrace();
+      expect(await context.persistableState.peekStorage(address, new Fr(slotNumber))).toEqual(calldata[0]);
+      expect(await context.persistableState.peekStorage(address, new Fr(slotNumber+1n))).toEqual(calldata[1]);
 
       // Tracing
-      expect(worldState.storageWrites).toEqual([
+      expect(trace.contractStorageUpdateRequests).toEqual([
         expect.objectContaining({
-          storageAddress: address,
-          slot: new Fr(slot),
-          value: calldata[0],
+          storageSlot: new Fr(slotNumber),
+          newValue: calldata[0],
+          contractAddress: address,
         }),
         expect.objectContaining({
-          storageAddress: address,
-          slot: new Fr(slot + 1n),
-          value: calldata[1],
+          storageSlot: new Fr(slotNumber + 1n),
+          newValue: calldata[1],
+          contractAddress: address,
         }),
       ]);
     });
@@ -708,21 +723,21 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.output).toEqual(values);
 
       // Tracing
-      const worldState = context.persistableState.flush();
-      expect(worldState.storageReads).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.contractStorageReads).toEqual([
         expect.objectContaining({
-          storageAddress: address,
-          slot: new Fr(slot),
-          value: values[0],
-          exists: true,
+          storageSlot: new Fr(slot),
+          currentValue: values[0],
+          contractAddress: address,
         }),
         expect.objectContaining({
-          storageAddress: address,
-          slot: new Fr(slot + 1n),
-          value: values[1],
-          exists: true,
+          storageSlot: new Fr(slot + 1n),
+          currentValue: values[1],
+          contractAddress: address,
         }),
       ]);
+      expect(trace.avmCircuitHints.storageValues.items[0].value).toEqual(values[0]);
+      expect(trace.avmCircuitHints.storageValues.items[1].value).toEqual(values[1]);
     });
 
     it('Should set a value in storage (map)', async () => {
@@ -739,17 +754,17 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.reverted).toBe(false);
       // returns the storage slot for modified key
       const slotNumber = results.output[0].toBigInt();
+      const slot = new Fr(slotNumber);
 
-      const worldState = context.persistableState.flush();
-      const storageSlot = worldState.currentStorageValue.get(address.toBigInt())!;
-      expect(storageSlot.get(slotNumber)).toEqual(value);
+      const trace = context.persistableState.getTrace();
+      expect(await context.persistableState.peekStorage(address, slot)).toEqual(value);
 
       // Tracing
-      expect(worldState.storageWrites).toEqual([
+      expect(trace.contractStorageUpdateRequests).toEqual([
         expect.objectContaining({
-          storageAddress: address,
-          slot: new Fr(slotNumber),
-          value: value,
+          storageSlot: slot,
+          newValue: value,
+          contractAddress: address,
         }),
       ]);
     });
@@ -768,25 +783,25 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.reverted).toBe(false);
       // returns the storage slot for modified key
       const slotNumber = results.output[0].toBigInt();
+      const slot = new Fr(slotNumber);
 
-      const worldState = context.persistableState.flush();
-      const storageSlot = worldState.currentStorageValue.get(address.toBigInt())!;
-      expect(storageSlot.get(slotNumber)).toEqual(value);
+      const trace = context.persistableState.getTrace();
+      expect(await context.persistableState.peekStorage(address, slot)).toEqual(value);
 
       // Tracing
-      expect(worldState.storageReads).toEqual([
+      expect(trace.contractStorageReads).toEqual([
         expect.objectContaining({
-          storageAddress: address,
-          slot: new Fr(slotNumber),
-          value: Fr.ZERO,
-          exists: false,
+          storageSlot: slot,
+          currentValue: Fr.ZERO,
+          contractAddress: address,
         }),
       ]);
-      expect(worldState.storageWrites).toEqual([
+      expect(trace.avmCircuitHints.storageValues.items[0].value).toEqual(Fr.ZERO);
+      expect(trace.contractStorageUpdateRequests).toEqual([
         expect.objectContaining({
-          storageAddress: address,
-          slot: new Fr(slotNumber),
-          value: value,
+          storageSlot: slot,
+          newValue: value,
+          contractAddress: address,
         }),
       ]);
     });
@@ -810,15 +825,15 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       expect(results.output).toEqual([value]);
 
       // Tracing
-      const worldState = context.persistableState.flush();
-      expect(worldState.storageReads).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.contractStorageReads).toEqual([
         expect.objectContaining({
-          storageAddress: address,
           // slot depends on pedersen hash of key, etc.
-          value: value,
-          exists: true,
+          currentValue: value,
+          contractAddress: address,
         }),
       ]);
+      expect(trace.avmCircuitHints.storageValues.items[0].value).toEqual(value);
     });
   });
 
@@ -842,10 +857,12 @@ describe('AVM simulator: transpiled Noir contracts', () => {
       const results = await new AvmSimulator(context).executeBytecode(bytecode);
 
       expect(results.reverted).toBe(false);
+      // TODO(dbanks12): implement full GETCONTRACTINSTANCE tests
     });
   });
 
   describe('Nested external calls', () => {
+    // TODO(dbanks12): test tracing and hints for a nested call
     it(`Nested call with not enough gas`, async () => {
       const gas = [/*l2=*/ 5, /*da=*/ 10000].map(g => new Fr(g));
       const calldata: Fr[] = [new Fr(1), new Fr(2), ...gas];

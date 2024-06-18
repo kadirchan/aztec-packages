@@ -1,14 +1,14 @@
 import { Fr } from '@aztec/foundation/fields';
 
 import { randomTracedContractInstance } from '../fixtures/index.js';
-import { WorldStateAccessTrace } from './trace.js';
+import { AvmSideEffectTrace } from './trace.js';
 import { type TracedL1toL2MessageCheck, type TracedNullifier, type TracedNullifierCheck } from './trace_types.js';
 
 describe('world state access trace', () => {
-  let trace: WorldStateAccessTrace;
+  let trace: AvmSideEffectTrace;
 
   beforeEach(() => {
-    trace = new WorldStateAccessTrace();
+    trace = new AvmSideEffectTrace();
   });
 
   describe('Basic tracing', () => {
@@ -20,7 +20,7 @@ describe('world state access trace', () => {
 
       trace.traceNoteHashCheck(contractAddress, noteHash, exists, leafIndex);
 
-      expect(trace.noteHashChecks).toEqual([
+      expect(trace.noteHashReadRequests).toEqual([
         {
           // callPointer: expect.any(Fr),
           storageAddress: contractAddress,
@@ -61,7 +61,7 @@ describe('world state access trace', () => {
         isPending: isPending,
         leafIndex: leafIndex,
       };
-      expect(trace.nullifierChecks).toEqual([expectedCheck]);
+      expect(trace.nullifierReadRequests).toEqual([expectedCheck]);
       expect(trace.getCounter()).toEqual(1);
     });
     it('Should trace nullifiers', () => {
@@ -89,7 +89,7 @@ describe('world state access trace', () => {
         exists: exists,
         counter: new Fr(0),
       };
-      expect(trace.l1ToL2MessageChecks).toEqual([expectedCheck]);
+      expect(trace.l1ToL2MsgReadRequests).toEqual([expectedCheck]);
       expect(trace.getCounter()).toEqual(1);
     });
     it('Should trace get contract instance', () => {
@@ -200,7 +200,7 @@ describe('world state access trace', () => {
     trace.traceL1ToL2MessageCheck(msgHash, msgLeafIndex, msgExists);
     trace.traceGetContractInstance(instance);
 
-    const childTrace = new WorldStateAccessTrace(trace);
+    const childTrace = new AvmSideEffectTrace(trace);
     childTrace.tracePublicStorageWrite(contractAddress, slot, valueT1);
     childTrace.tracePublicStorageRead(contractAddress, slot, valueT1, /*exists=*/ true, /*cached=*/ true);
     childTrace.traceNoteHashCheck(contractAddress, noteHashT1, noteHashExistsT1, noteHashLeafIndexT1);
@@ -217,10 +217,10 @@ describe('world state access trace', () => {
     childTrace.traceGetContractInstance(instanceT1);
 
     const childCounterBeforeMerge = childTrace.getCounter();
-    trace.acceptAndMerge(childTrace);
+    trace.processFinishedChildTrace(childTrace);
     expect(trace.getCounter()).toEqual(childCounterBeforeMerge);
 
-    expect(trace.publicStorageReads).toEqual([
+    expect(trace.contractStorageReads).toEqual([
       expect.objectContaining({
         storageAddress: contractAddress,
         slot: slot,
@@ -236,7 +236,7 @@ describe('world state access trace', () => {
         cached: true,
       }),
     ]);
-    expect(trace.publicStorageWrites).toEqual([
+    expect(trace.contractStorageUpdateRequests).toEqual([
       expect.objectContaining({ storageAddress: contractAddress, slot: slot, value: value }),
       expect.objectContaining({ storageAddress: contractAddress, slot: slot, value: valueT1 }),
     ]);
@@ -260,7 +260,7 @@ describe('world state access trace', () => {
         nullifier: nullifierT1,
       }),
     ]);
-    expect(trace.nullifierChecks).toEqual([
+    expect(trace.nullifierReadRequests).toEqual([
       expect.objectContaining({
         nullifier: nullifier,
         exists: nullifierExists,
@@ -274,18 +274,18 @@ describe('world state access trace', () => {
         leafIndex: nullifierLeafIndexT1,
       }),
     ]);
-    expect(trace.noteHashChecks).toEqual([
+    expect(trace.noteHashReadRequests).toEqual([
       expect.objectContaining({ noteHash: noteHash, exists: noteHashExists, leafIndex: noteHashLeafIndex }),
       expect.objectContaining({ noteHash: noteHashT1, exists: noteHashExistsT1, leafIndex: noteHashLeafIndexT1 }),
     ]);
     expect(
-      trace.l1ToL2MessageChecks.map(c => ({
+      trace.l1ToL2MsgReadRequests.map(c => ({
         leafIndex: c.leafIndex,
         msgHash: c.msgHash,
         exists: c.exists,
       })),
     ).toEqual([expectedMessageCheck, expectedMessageCheckT1]);
-    expect(trace.l1ToL2MessageChecks).toEqual([
+    expect(trace.l1ToL2MsgReadRequests).toEqual([
       expect.objectContaining({ leafIndex: msgLeafIndex, msgHash: msgHash, exists: msgExists }),
       expect.objectContaining({ leafIndex: msgLeafIndexT1, msgHash: msgHashT1, exists: msgExistsT1 }),
     ]);

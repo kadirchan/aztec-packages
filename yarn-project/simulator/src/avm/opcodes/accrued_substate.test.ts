@@ -67,8 +67,8 @@ describe('Accrued Substate', () => {
       const exists = context.machineState.memory.getAs<Uint8>(existsOffset);
       expect(exists).toEqual(new Uint8(0));
 
-      const journalState = context.persistableState.flush();
-      expect(journalState.noteHashChecks).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.noteHashChecks).toEqual([
         expect.objectContaining({ exists: false, leafIndex: leafIndex.toFr(), noteHash: noteHash.toFr() }),
       ]);
     });
@@ -93,8 +93,8 @@ describe('Accrued Substate', () => {
       const exists = context.machineState.memory.getAs<Uint8>(existsOffset);
       expect(exists).toEqual(new Uint8(0));
 
-      const journalState = context.persistableState.flush();
-      expect(journalState.noteHashChecks).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.noteHashChecks).toEqual([
         expect.objectContaining({ exists: false, leafIndex: leafIndex.toFr(), noteHash: noteHash.toFr() }),
       ]);
     });
@@ -119,8 +119,8 @@ describe('Accrued Substate', () => {
       const exists = context.machineState.memory.getAs<Uint8>(existsOffset);
       expect(exists).toEqual(new Uint8(1));
 
-      const journalState = context.persistableState.flush();
-      expect(journalState.noteHashChecks).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.noteHashChecks).toEqual([
         expect.objectContaining({ exists: true, leafIndex: leafIndex.toFr(), noteHash: noteHash.toFr() }),
       ]);
     });
@@ -145,8 +145,8 @@ describe('Accrued Substate', () => {
 
       await new EmitNoteHash(/*indirect=*/ 0, /*offset=*/ 0).execute(context);
 
-      const journalState = context.persistableState.flush();
-      expect(journalState.newNoteHashes).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.newNoteHashes).toEqual([
         expect.objectContaining({
           storageAddress: context.environment.storageAddress,
           noteHash: value.toFr(),
@@ -195,8 +195,8 @@ describe('Accrued Substate', () => {
       const exists = context.machineState.memory.getAs<Uint8>(existsOffset);
       expect(exists).toEqual(new Uint8(0));
 
-      const journalState = context.persistableState.flush();
-      expect(journalState.nullifierChecks).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.nullifierChecks).toEqual([
         expect.objectContaining({ nullifier: value.toFr(), storageAddress: address.toFr(), exists: false }),
       ]);
     });
@@ -222,8 +222,8 @@ describe('Accrued Substate', () => {
       const exists = context.machineState.memory.getAs<Uint8>(existsOffset);
       expect(exists).toEqual(new Uint8(1));
 
-      const journalState = context.persistableState.flush();
-      expect(journalState.nullifierChecks).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.nullifierChecks).toEqual([
         expect.objectContaining({ nullifier: value.toFr(), storageAddress: address.toFr(), exists: true }),
       ]);
     });
@@ -248,8 +248,8 @@ describe('Accrued Substate', () => {
 
       await new EmitNullifier(/*indirect=*/ 0, /*offset=*/ 0).execute(context);
 
-      const journalState = context.persistableState.flush();
-      expect(journalState.newNullifiers).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.newNullifiers).toEqual([
         expect.objectContaining({
           storageAddress: context.environment.storageAddress.toField(),
           nullifier: value.toFr(),
@@ -327,8 +327,8 @@ describe('Accrued Substate', () => {
       const exists = context.machineState.memory.getAs<Uint8>(existsOffset);
       expect(exists).toEqual(new Uint8(0));
 
-      const journalState = context.persistableState.flush();
-      expect(journalState.l1ToL2MessageChecks).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.l1ToL2MessageChecks).toEqual([
         expect.objectContaining({ leafIndex: leafIndex.toFr(), msgHash: msgHash.toFr(), exists: false }),
       ]);
     });
@@ -353,8 +353,8 @@ describe('Accrued Substate', () => {
       const exists = context.machineState.memory.getAs<Uint8>(existsOffset);
       expect(exists).toEqual(new Uint8(1));
 
-      const journalState = context.persistableState.flush();
-      expect(journalState.l1ToL2MessageChecks).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.l1ToL2MessageChecks).toEqual([
         expect.objectContaining({ leafIndex: leafIndex.toFr(), msgHash: msgHash.toFr(), exists: true }),
       ]);
     });
@@ -379,8 +379,8 @@ describe('Accrued Substate', () => {
       const exists = context.machineState.memory.getAs<Uint8>(existsOffset);
       expect(exists).toEqual(new Uint8(0));
 
-      const journalState = context.persistableState.flush();
-      expect(journalState.l1ToL2MessageChecks).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.l1ToL2MessageChecks).toEqual([
         expect.objectContaining({ leafIndex: leafIndex.toFr(), msgHash: msgHash.toFr(), exists: false }),
       ]);
     });
@@ -424,9 +424,9 @@ describe('Accrued Substate', () => {
         logSizeOffset,
       ).execute(context);
 
-      const journalState = context.persistableState.flush();
+      const trace = context.persistableState.getTrace();
       const expectedLog = Buffer.concat(values.map(v => v.toFr().toBuffer()));
-      expect(journalState.newLogs).toEqual([
+      expect(trace.newLogs).toEqual([
         new UnencryptedL2Log(context.environment.address, new EventSelector(eventSelector), expectedLog),
       ]);
     });
@@ -465,8 +465,8 @@ describe('Accrued Substate', () => {
         /*contentOffset=*/ contentOffset,
       ).execute(context);
 
-      const journalState = context.persistableState.flush();
-      expect(journalState.newL1Messages).toEqual([
+      const trace = context.persistableState.getTrace();
+      expect(trace.newL1Messages).toEqual([
         expect.objectContaining({ recipient: EthAddress.fromField(recipient), content }),
       ]);
     });

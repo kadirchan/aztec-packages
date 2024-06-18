@@ -47,7 +47,7 @@ describe('journal', () => {
       expect(cachedResult).toEqual(cachedValue);
 
       // We expect the journal to store the access in [storedVal, cachedVal] - [time0, time1]
-      const { storageReads, storageWrites }: JournalData = journal.flush();
+      const { storageReads, storageWrites }: JournalData = journal.getTrace()();
       expect(storageReads).toEqual([
         expect.objectContaining({
           storageAddress: contractAddress,
@@ -78,7 +78,7 @@ describe('journal', () => {
       const address = new Fr(1234);
       journal.writeNoteHash(address, utxo);
 
-      const journalUpdates = journal.flush();
+      const journalUpdates = journal.getTrace()();
       expect(journalUpdates.newNoteHashes).toEqual([
         expect.objectContaining({ noteHash: utxo, storageAddress: address }),
       ]);
@@ -89,7 +89,7 @@ describe('journal', () => {
       const exists = await journal.checkNullifierExists(contractAddress, utxo);
       expect(exists).toEqual(false);
 
-      const journalUpdates = journal.flush();
+      const journalUpdates = journal.getTrace()();
       expect(journalUpdates.nullifierChecks).toEqual([expect.objectContaining({ nullifier: utxo, exists: false })]);
     });
     it('checkNullifierExists works for existing nullifiers', async () => {
@@ -101,7 +101,7 @@ describe('journal', () => {
       const exists = await journal.checkNullifierExists(contractAddress, utxo);
       expect(exists).toEqual(true);
 
-      const journalUpdates = journal.flush();
+      const journalUpdates = journal.getTrace()();
       expect(journalUpdates.nullifierChecks).toEqual([expect.objectContaining({ nullifier: utxo, exists: true })]);
     });
     it('Should maintain nullifiers', async () => {
@@ -109,7 +109,7 @@ describe('journal', () => {
       const utxo = new Fr(2);
       await journal.writeNullifier(contractAddress, utxo);
 
-      const journalUpdates = journal.flush();
+      const journalUpdates = journal.getTrace()();
       expect(journalUpdates.newNullifiers).toEqual([
         expect.objectContaining({ storageAddress: contractAddress, nullifier: utxo }),
       ]);
@@ -121,7 +121,7 @@ describe('journal', () => {
       const exists = await journal.checkL1ToL2MessageExists(msgHash, leafIndex);
       expect(exists).toEqual(false);
 
-      const journalUpdates = journal.flush();
+      const journalUpdates = journal.getTrace()();
       expect(journalUpdates.l1ToL2MessageChecks).toEqual([
         expect.objectContaining({ leafIndex: leafIndex, msgHash, exists: false }),
       ]);
@@ -134,7 +134,7 @@ describe('journal', () => {
       const exists = await journal.checkL1ToL2MessageExists(msgHash, leafIndex);
       expect(exists).toEqual(true);
 
-      const journalUpdates = journal.flush();
+      const journalUpdates = journal.getTrace()();
       expect(journalUpdates.l1ToL2MessageChecks).toEqual([
         expect.objectContaining({ leafIndex: leafIndex, msgHash, exists: true }),
       ]);
@@ -144,7 +144,7 @@ describe('journal', () => {
       const utxo = new Fr(2);
       await journal.writeNullifier(contractAddress, utxo);
 
-      const journalUpdates = journal.flush();
+      const journalUpdates = journal.getTrace()();
       expect(journalUpdates.newNullifiers).toEqual([
         expect.objectContaining({ storageAddress: contractAddress, nullifier: utxo }),
       ]);
@@ -152,9 +152,9 @@ describe('journal', () => {
     it('Should maintain l1 messages', () => {
       const recipient = EthAddress.fromField(new Fr(1));
       const msgHash = new Fr(2);
-      journal.writeL1Message(recipient, msgHash);
+      journal.writeL2ToL1Message(recipient, msgHash);
 
-      const journalUpdates = journal.flush();
+      const journalUpdates = journal.getTrace()();
       expect(journalUpdates.newL1Messages).toEqual([expect.objectContaining({ recipient, content: msgHash })]);
     });
 
@@ -201,8 +201,8 @@ describe('journal', () => {
     journal.writeStorage(contractAddress, key, value);
     await journal.readStorage(contractAddress, key);
     journal.writeNoteHash(contractAddress, commitment);
-    journal.writeLog(new Fr(log.address), new Fr(log.selector), log.data);
-    journal.writeL1Message(recipient, commitment);
+    journal.writeUnencryptedLog(new Fr(log.address), new Fr(log.selector), log.data);
+    journal.writeL2ToL1Message(recipient, commitment);
     await journal.writeNullifier(contractAddress, commitment);
     await journal.checkNullifierExists(contractAddress, commitment);
     await journal.checkL1ToL2MessageExists(commitment, index);
@@ -212,8 +212,8 @@ describe('journal', () => {
     childJournal.writeStorage(contractAddress, key, valueT1);
     await childJournal.readStorage(contractAddress, key);
     childJournal.writeNoteHash(contractAddress, commitmentT1);
-    childJournal.writeLog(new Fr(logT1.address), new Fr(logT1.selector), logT1.data);
-    childJournal.writeL1Message(recipient, commitmentT1);
+    childJournal.writeUnencryptedLog(new Fr(logT1.address), new Fr(logT1.selector), logT1.data);
+    childJournal.writeL2ToL1Message(recipient, commitmentT1);
     await childJournal.writeNullifier(contractAddress, commitmentT1);
     await childJournal.checkNullifierExists(contractAddress, commitmentT1);
     await childJournal.checkL1ToL2MessageExists(commitmentT1, indexT1);
@@ -226,7 +226,7 @@ describe('journal', () => {
 
     // Check that the storage is merged by reading from the journal
     // Check that the UTXOs are merged
-    const journalUpdates: JournalData = journal.flush();
+    const journalUpdates: JournalData = journal.getTrace()();
 
     // Check storage reads order is preserved upon merge
     // We first read value from t0, then value from t1
@@ -337,8 +337,8 @@ describe('journal', () => {
     await journal.writeNullifier(contractAddress, commitment);
     await journal.checkNullifierExists(contractAddress, commitment);
     await journal.checkL1ToL2MessageExists(commitment, index);
-    journal.writeLog(new Fr(log.address), new Fr(log.selector), log.data);
-    journal.writeL1Message(recipient, commitment);
+    journal.writeUnencryptedLog(new Fr(log.address), new Fr(log.selector), log.data);
+    journal.writeL2ToL1Message(recipient, commitment);
     await journal.getContractInstance(aztecContractAddress);
 
     const childJournal = new AvmPersistableStateManager(journal.hostStorage, journal);
@@ -348,8 +348,8 @@ describe('journal', () => {
     await childJournal.writeNullifier(contractAddress, commitmentT1);
     await childJournal.checkNullifierExists(contractAddress, commitmentT1);
     await journal.checkL1ToL2MessageExists(commitmentT1, indexT1);
-    childJournal.writeLog(new Fr(logT1.address), new Fr(logT1.selector), logT1.data);
-    childJournal.writeL1Message(recipient, commitmentT1);
+    childJournal.writeUnencryptedLog(new Fr(logT1.address), new Fr(logT1.selector), logT1.data);
+    childJournal.writeL2ToL1Message(recipient, commitmentT1);
     await childJournal.getContractInstance(aztecContractAddress);
 
     journal.rejectNestedCallState(childJournal);
@@ -358,7 +358,7 @@ describe('journal', () => {
     const result = await journal.readStorage(contractAddress, key);
     expect(result).toEqual(value); // rather than valueT1
 
-    const journalUpdates: JournalData = journal.flush();
+    const journalUpdates: JournalData = journal.getTrace()();
 
     // Reads and writes should be preserved
     // Check storage reads order is preserved upon merge

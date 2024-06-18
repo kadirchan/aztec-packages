@@ -1,12 +1,6 @@
 // All code in this file needs to die once the public executor is phased out in favor of the AVM.
-import { UnencryptedFunctionL2Logs } from '@aztec/circuit-types';
 import {
-  AvmContractInstanceHint,
-  AvmExecutionHints,
-  AvmExternalCallHint,
-  AvmKeyValueHint,
   CallContext,
-  Gas,
   type GasSettings,
   type GlobalVariables,
   type Header,
@@ -16,14 +10,9 @@ import { Fr } from '@aztec/foundation/fields';
 import { promisify } from 'util';
 import { gunzip } from 'zlib';
 
-import { type AvmContext } from '../avm/avm_context.js';
 import { AvmExecutionEnvironment } from '../avm/avm_execution_environment.js';
-import { type AvmContractCallResults } from '../avm/avm_message_call_result.js';
-import { type PartialPublicExecutionResult } from '../avm/journal/journal.js';
-import { type WorldStateAccessTrace } from '../avm/journal/trace.js';
 import { Mov } from '../avm/opcodes/memory.js';
-import { createSimulationError } from '../common/errors.js';
-import { type PublicExecution, type PublicExecutionResult } from './execution.js';
+import { type PublicExecution } from './execution.js';
 
 /**
  * Convert a PublicExecution(Environment) object to an AvmExecutionEnvironment
@@ -57,7 +46,7 @@ export function createAvmExecutionEnvironment(
   );
 }
 
-export function createPublicExecution(
+export function createPublicExecutionRequest(
   startSideEffectCounter: number,
   avmEnvironment: AvmExecutionEnvironment,
   calldata: Fr[],
@@ -77,66 +66,6 @@ export function createPublicExecution(
     functionSelector: avmEnvironment.temporaryFunctionSelector,
   };
   return execution;
-}
-
-function computeHints(trace: WorldStateAccessTrace, executionResult: PartialPublicExecutionResult): AvmExecutionHints {
-  return new AvmExecutionHints(
-    trace.publicStorageReads.map(read => new AvmKeyValueHint(read.counter, read.value)),
-    trace.noteHashChecks.map(check => new AvmKeyValueHint(check.counter, new Fr(check.exists ? 1 : 0))),
-    trace.nullifierChecks.map(check => new AvmKeyValueHint(check.counter, new Fr(check.exists ? 1 : 0))),
-    trace.l1ToL2MessageChecks.map(check => new AvmKeyValueHint(check.counter, new Fr(check.exists ? 1 : 0))),
-    executionResult.nestedExecutions.map(nested => {
-      const gasUsed = new Gas(
-        nested.startGasLeft.daGas - nested.endGasLeft.daGas,
-        nested.startGasLeft.l2Gas - nested.endGasLeft.l2Gas,
-      );
-      return new AvmExternalCallHint(/*success=*/ new Fr(nested.reverted ? 0 : 1), nested.returnValues, gasUsed);
-    }),
-    trace.gotContractInstances.map(
-      instance =>
-        new AvmContractInstanceHint(
-          instance.address,
-          new Fr(instance.exists ? 1 : 0),
-          instance.salt,
-          instance.deployer,
-          instance.contractClassId,
-          instance.initializationHash,
-          instance.publicKeysHash,
-        ),
-    ),
-  );
-}
-
-export function convertAvmResultsToPxResult(
-  avmResult: AvmContractCallResults,
-  startSideEffectCounter: number,
-  fromPx: PublicExecution,
-  startGas: Gas,
-  endAvmContext: AvmContext,
-  bytecode: Buffer | undefined,
-): PublicExecutionResult {
-  const endPersistableState = endAvmContext.persistableState;
-  const endMachineState = endAvmContext.machineState;
-
-  return {
-    ...endPersistableState.transitionalExecutionResult, // includes nestedExecutions
-    execution: fromPx,
-    returnValues: avmResult.output,
-    startSideEffectCounter: new Fr(startSideEffectCounter),
-    endSideEffectCounter: new Fr(endPersistableState.trace.counter),
-    unencryptedLogs: new UnencryptedFunctionL2Logs(endPersistableState.transitionalExecutionResult.unencryptedLogs),
-    allUnencryptedLogs: new UnencryptedFunctionL2Logs(
-      endPersistableState.transitionalExecutionResult.allUnencryptedLogs,
-    ),
-    reverted: avmResult.reverted,
-    revertReason: avmResult.revertReason ? createSimulationError(avmResult.revertReason) : undefined,
-    startGasLeft: startGas,
-    endGasLeft: endMachineState.gasLeft,
-    transactionFee: endAvmContext.environment.transactionFee,
-    bytecode: bytecode,
-    calldata: endAvmContext.environment.calldata,
-    avmHints: computeHints(endPersistableState.trace, endPersistableState.transitionalExecutionResult),
-  };
 }
 
 const AVM_MAGIC_SUFFIX = Buffer.from([

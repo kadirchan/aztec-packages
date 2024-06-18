@@ -1,7 +1,7 @@
 import { FunctionSelector, Gas } from '@aztec/circuits.js';
 import { padArrayEnd } from '@aztec/foundation/collection';
 
-import { convertAvmResultsToPxResult, createPublicExecution } from '../../public/transitional_adaptors.js';
+import { createPublicExecutionRequest } from '../../public/transitional_adaptors.js';
 import type { AvmContext } from '../avm_context.js';
 import { gasLeftToGas } from '../avm_gas.js';
 import { Field, TypeTag, Uint8 } from '../avm_memory_types.js';
@@ -11,6 +11,7 @@ import { RethrownError } from '../errors.js';
 import { Opcode, OperandType } from '../serialization/instruction_serialization.js';
 import { Addressing } from './addressing_mode.js';
 import { Instruction } from './instruction.js';
+import { createSimulationError } from '../../common/errors.js';
 
 abstract class ExternalCall extends Instruction {
   // Informs (de)serialization. See Instruction.deserialize.
@@ -24,7 +25,6 @@ abstract class ExternalCall extends Instruction {
     OperandType.UINT32,
     OperandType.UINT32,
     OperandType.UINT32,
-    /* temporary function selector */
     OperandType.UINT32,
   ];
 
@@ -37,8 +37,8 @@ abstract class ExternalCall extends Instruction {
     private retOffset: number,
     private retSize: number,
     private successOffset: number,
-    // Function selector is temporary since eventually public contract bytecode will be one blob
-    // containing all functions, and function selector will become an application-level mechanism
+    // NOTE: Function selector is likely temporary since eventually public contract bytecode will be one
+    // blob containing all functions, and function selector will become an application-level mechanism
     // (e.g. first few bytes of calldata + compiler-generated jump table)
     private functionSelectorOffset: number,
   ) {
@@ -81,7 +81,6 @@ abstract class ExternalCall extends Instruction {
     const allocatedGas = { l2Gas: allocatedL2Gas, daGas: allocatedDaGas };
     context.machineState.consumeGas(allocatedGas);
 
-    // TRANSITIONAL: This should be removed once the kernel handles and entire enqueued call per circuit
     const nestedContext = context.createNestedContractCallContext(
       callAddress.toFr(),
       calldata,
@@ -89,32 +88,9 @@ abstract class ExternalCall extends Instruction {
       callType,
       FunctionSelector.fromField(functionSelector),
     );
-    const startSideEffectCounter = nestedContext.persistableState.trace.counter;
 
-    const oldStyleExecution = createPublicExecution(startSideEffectCounter, nestedContext.environment, calldata);
     const simulator = new AvmSimulator(nestedContext);
     const nestedCallResults: AvmContractCallResults = await simulator.execute();
-    const pxResults = convertAvmResultsToPxResult(
-      nestedCallResults,
-      startSideEffectCounter,
-      oldStyleExecution,
-      Gas.from(allocatedGas),
-      nestedContext,
-      simulator.getBytecode(),
-    );
-    // store the old PublicExecutionResult object to maintain a recursive data structure for the old kernel
-    context.persistableState.transitionalExecutionResult.nestedExecutions.push(pxResults);
-    // END TRANSITIONAL
-
-    // const nestedContext = context.createNestedContractCallContext(
-    //   callAddress.toFr(),
-    //   calldata,
-    //   allocatedGas,
-    //   this.type,
-    //   FunctionSelector.fromField(functionSelector),
-    // );
-    // const nestedCallResults: AvmContractCallResults = await new AvmSimulator(nestedContext).execute();
-
     const success = !nestedCallResults.reverted;
 
     // TRANSITIONAL: We rethrow here so that the MESSAGE gets propagated.
@@ -143,12 +119,19 @@ abstract class ExternalCall extends Instruction {
     // Refund unused gas
     context.machineState.refundGas(gasLeftToGas(nestedContext.machineState));
 
-    // TODO: Should we merge the changes from a nested call in the case of a STATIC call?
-    if (success) {
-      context.persistableState.acceptNestedCallState(nestedContext.persistableState);
-    } else {
-      context.persistableState.rejectNestedCallState(nestedContext.persistableState);
-    }
+    nestedContext.persistableState.processNestedCall(
+      /*nestedState=*/nestedContext.persistableState,
+      /*success=*/success,
+      /*execution=*/createPublicExecutionRequest(nestedContext.persistableState.trace.startSideEffectCounter, nestedContext.environment, calldata),
+      /*startGasLeft=*/Gas.from(allocatedGas),
+      /*endGasLeft=*/Gas.from(nestedContext.machineState.gasLeft),
+      /*transactionFee=*/nestedContext.environment.transactionFee,
+      /*bytecode=*/simulator.getBytecode()!,
+      /*calldata=*/nestedContext.environment.calldata,
+      /*returnValues=*/nestedCallResults.output,
+      /*reverted=*/nestedCallResults.reverted,
+      /*revertReason=*/nestedCallResults.revertReason,
+    );
 
     memory.assert(memoryOperations);
     context.machineState.incrementPc();

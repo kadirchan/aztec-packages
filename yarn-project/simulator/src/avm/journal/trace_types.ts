@@ -1,14 +1,6 @@
 import { type Fr } from '@aztec/foundation/fields';
 import { type ContractInstanceWithAddress } from '@aztec/types/contracts';
 
-export type TracedPublicStorageWrite = {
-  contractAddress: Fr;
-  slot: Fr;
-  value: Fr;
-  counter: Fr;
-  //  endLifetime: Fr;
-};
-
 export type TracedNoteHashCheck = {
   storageAddress: Fr;
   leafIndex: Fr;

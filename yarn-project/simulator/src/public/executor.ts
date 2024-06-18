@@ -1,5 +1,5 @@
 import { type AvmSimulationStats } from '@aztec/circuit-types/stats';
-import { Fr, type Gas, type GlobalVariables, type Header, type Nullifier, type TxContext } from '@aztec/circuits.js';
+import { Fr, Gas, type GlobalVariables, type Header, type Nullifier, type TxContext } from '@aztec/circuits.js';
 import { createDebugLogger } from '@aztec/foundation/log';
 import { Timer } from '@aztec/foundation/timer';
 
@@ -10,7 +10,7 @@ import { HostStorage } from '../avm/journal/host_storage.js';
 import { AvmPersistableStateManager } from '../avm/journal/index.js';
 import { type CommitmentsDB, type PublicContractsDB, type PublicStateDB } from './db_interfaces.js';
 import { type PublicExecution, type PublicExecutionResult, checkValidStaticCall } from './execution.js';
-import { convertAvmResultsToPxResult, createAvmExecutionEnvironment } from './transitional_adaptors.js';
+import { createAvmExecutionEnvironment } from './transitional_adaptors.js';
 
 /**
  * Handles execution of public functions.
@@ -56,7 +56,7 @@ export class PublicExecutor {
     for (const nullifier of pendingNullifiers) {
       worldStateJournal.nullifiers.cache.appendSiloed(nullifier.value);
     }
-    worldStateJournal.trace.counter = startSideEffectCounter;
+    worldStateJournal.trace.sideEffectCounter = startSideEffectCounter;
 
     const executionEnv = createAvmExecutionEnvironment(
       execution,
@@ -70,7 +70,7 @@ export class PublicExecutor {
     const avmContext = new AvmContext(worldStateJournal, executionEnv, machineState);
     const simulator = new AvmSimulator(avmContext);
     const avmResult = await simulator.execute();
-    const bytecode = simulator.getBytecode();
+    const bytecode = simulator.getBytecode()!;
 
     // Commit the journals state to the DBs since this is a top-level execution.
     // Observe that this will write all the state changes to the DBs, not only the latest for each slot.
@@ -89,13 +89,17 @@ export class PublicExecutor {
       } satisfies AvmSimulationStats,
     );
 
-    const executionResult = convertAvmResultsToPxResult(
-      avmResult,
-      startSideEffectCounter,
+    // "ExecutionResult" is overloaded
+    const executionResult = avmContext.persistableState.trace.toExecutionResult(
       execution,
-      startGas,
-      avmContext,
-      bytecode,
+      /*startGasLeft=*/startGas,
+      /*endGasLeft=*/Gas.from(avmContext.machineState.gasLeft),
+      /*transactionFee=*/avmContext.environment.transactionFee,
+      /*bytecode=*/bytecode,
+      /*calldata=*/avmContext.environment.calldata,
+      /*returnValues=*/avmResult.output,
+      /*reverted=*/avmResult.reverted,
+      /*revertReason=*/avmResult.revertReason,
     );
 
     // TODO(https://github.com/AztecProtocol/aztec-packages/issues/5818): is this really needed?
