@@ -741,9 +741,10 @@ pub fn inject_note_exports(
                     },
                     file_id,
                 ))?;
-            let note_id_statement = context.def_interner.statement(get_note_type_id_statement_id);
+            let note_type_id_statement =
+                context.def_interner.statement(get_note_type_id_statement_id);
 
-            let note_id_value = match note_id_statement {
+            let note_type_id = match note_type_id_statement {
                 HirStatement::Expression(expression_id) => {
                     match context.def_interner.expression(&expression_id) {
                         HirExpression::Literal(HirLiteral::Integer(value, _)) => Ok(value),
@@ -751,7 +752,7 @@ pub fn inject_note_exports(
                             AztecMacroError::CouldNotExportStorageLayout {
                                 span: None,
                                 secondary_message: Some(
-                                    "note_id statement must be a literal integer expression"
+                                    "note_type_id statement must be a literal integer expression"
                                         .to_string(),
                                 ),
                             },
@@ -761,7 +762,8 @@ pub fn inject_note_exports(
                             AztecMacroError::CouldNotExportStorageLayout {
                                 span: None,
                                 secondary_message: Some(
-                                    "note_id statement must be a literal expression".to_string(),
+                                    "note_type_id statement must be a literal expression"
+                                        .to_string(),
                                 ),
                             },
                             file_id,
@@ -772,7 +774,7 @@ pub fn inject_note_exports(
                     AztecMacroError::CouldNotExportStorageLayout {
                         span: None,
                         secondary_message: Some(
-                            "note_id statement must be an expression".to_string(),
+                            "note_type_id statement must be an expression".to_string(),
                         ),
                     },
                     file_id,
@@ -780,7 +782,7 @@ pub fn inject_note_exports(
             }?;
             let global = generate_note_exports_global(
                 &note.borrow().name.0.contents,
-                &note_id_value.to_hex(),
+                &note_type_id.to_hex(),
             )
             .map_err(|err| (err, file_id))?;
 
