@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.44.0](https://github.com/AztecProtocol/aztec-packages/compare/aztec-packages-v0.43.0...aztec-packages-v0.44.0) (2024-06-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* make note_getter return BoundedVec instead of an Option array ([#7050](https://github.com/AztecProtocol/aztec-packages/issues/7050))
+* TXE ([#6985](https://github.com/AztecProtocol/aztec-packages/issues/6985))
+
+### Features
+
+* Added prove_output_all flow for honk ([#6869](https://github.com/AztecProtocol/aztec-packages/issues/6869)) ([7bd7c66](https://github.com/AztecProtocol/aztec-packages/commit/7bd7c66de6adb1f703509e9a8e8911ff0ec2025c))
+* **avm:** Add ECC ops to avm_proving_test ([#7058](https://github.com/AztecProtocol/aztec-packages/issues/7058)) ([7f62a90](https://github.com/AztecProtocol/aztec-packages/commit/7f62a901c848020058a58f6e772d495566416e0b))
+* **avm:** Cpp msm changes ([#7056](https://github.com/AztecProtocol/aztec-packages/issues/7056)) ([f9c8f20](https://github.com/AztecProtocol/aztec-packages/commit/f9c8f20f1bd6af0003960b19f61b737e3bad5f1e))
+* Devnet deployments ([#7024](https://github.com/AztecProtocol/aztec-packages/issues/7024)) ([fa70876](https://github.com/AztecProtocol/aztec-packages/commit/fa70876a17b981e6ffa4bece390186b1231ba4fe))
+* Flamegraph helper script ([#7077](https://github.com/AztecProtocol/aztec-packages/issues/7077)) ([8630c8f](https://github.com/AztecProtocol/aztec-packages/commit/8630c8f2018c711b84997dc4727d5123ad616107))
+* Make note_getter return BoundedVec instead of an Option array ([#7050](https://github.com/AztecProtocol/aztec-packages/issues/7050)) ([f9ac0fc](https://github.com/AztecProtocol/aztec-packages/commit/f9ac0fca40a9d7273ec2adddbfbe961f86595f56))
+* **p2p:** More comprehensive peer management, dial retries, persistence fix ([#6953](https://github.com/AztecProtocol/aztec-packages/issues/6953)) ([cdd1cbd](https://github.com/AztecProtocol/aztec-packages/commit/cdd1cbd2ff5a8aceb52bde44c24462fed0808890))
+* Several updates in SMT verification module ([#7105](https://github.com/AztecProtocol/aztec-packages/issues/7105)) ([41b21f1](https://github.com/AztecProtocol/aztec-packages/commit/41b21f179ead617203c6d77b080e4f8b0065e06c))
+* TXE ([#6985](https://github.com/AztecProtocol/aztec-packages/issues/6985)) ([109624f](https://github.com/AztecProtocol/aztec-packages/commit/109624f127dc8da6d9d963b3af9250237be0d4e4))
+
+
+### Bug Fixes
+
+* Export event selector and replace function selector with event selector where appropriate ([#7095](https://github.com/AztecProtocol/aztec-packages/issues/7095)) ([fcc15fa](https://github.com/AztecProtocol/aztec-packages/commit/fcc15faffac98ab844dbad51e949c24114a8bcf0)), closes [#7089](https://github.com/AztecProtocol/aztec-packages/issues/7089)
+* Fix bug for a unit test in full proving mode repated to MSM ([#7104](https://github.com/AztecProtocol/aztec-packages/issues/7104)) ([e37809b](https://github.com/AztecProtocol/aztec-packages/commit/e37809bdcdcf76f89f68403ee75aaf6d32c79a94))
+
+
+### Miscellaneous
+
+* `destroy_note(...)` optimization ([#7103](https://github.com/AztecProtocol/aztec-packages/issues/7103)) ([0770011](https://github.com/AztecProtocol/aztec-packages/commit/0770011139d698ffa466605f0c10f0f5fe965da3))
+* **avm:** Remove avm prefix from pil and executor ([#7099](https://github.com/AztecProtocol/aztec-packages/issues/7099)) ([b502fcd](https://github.com/AztecProtocol/aztec-packages/commit/b502fcd500dcb10945b29d00f86e290bec63cce3))
+* **avm:** Renamings and comments ([#7128](https://github.com/AztecProtocol/aztec-packages/issues/7128)) ([ed2f98e](https://github.com/AztecProtocol/aztec-packages/commit/ed2f98ee9d7f540fbdfae09a0117bf22aaf6ebc7))
+* Create workflow for full AVM tests ([#7051](https://github.com/AztecProtocol/aztec-packages/issues/7051)) ([a0b9c4b](https://github.com/AztecProtocol/aztec-packages/commit/a0b9c4b4383f448549c04567cd9c9264ce4240dc)), closes [#6643](https://github.com/AztecProtocol/aztec-packages/issues/6643)
+* Fix migration notes ([#7133](https://github.com/AztecProtocol/aztec-packages/issues/7133)) ([14917d3](https://github.com/AztecProtocol/aztec-packages/commit/14917d3d8c5da1f6038597d9129c6051a2fd94de))
+* Fix noir-projects dockerfile for CircleCI ([#7093](https://github.com/AztecProtocol/aztec-packages/issues/7093)) ([52ce25d](https://github.com/AztecProtocol/aztec-packages/commit/52ce25d1abcc5a8cff7ec360acf23806cb317b57))
+* Note hashes cleanup + optimization ([#7132](https://github.com/AztecProtocol/aztec-packages/issues/7132)) ([edd6d3f](https://github.com/AztecProtocol/aztec-packages/commit/edd6d3ffdddd6aa29c6638e5fab87aadf5d89d09))
+* Note hashing gate optimizations ([#7130](https://github.com/AztecProtocol/aztec-packages/issues/7130)) ([81a2580](https://github.com/AztecProtocol/aztec-packages/commit/81a258003f93335eba2d9d07ffc4f0feca935956))
+* Reads the return data ([#6669](https://github.com/AztecProtocol/aztec-packages/issues/6669)) ([ef85542](https://github.com/AztecProtocol/aztec-packages/commit/ef8554268c175e6349474883c6072e3979fe45c0))
+* Remove unneeded public input folding ([#7094](https://github.com/AztecProtocol/aztec-packages/issues/7094)) ([c30dc38](https://github.com/AztecProtocol/aztec-packages/commit/c30dc3856cec038d8c53af34cf82e08b0cb456aa))
+* Replace relative paths to noir-protocol-circuits ([525bbe7](https://github.com/AztecProtocol/aztec-packages/commit/525bbe750a8154d98355694ad9e1f3e33275ab5b))
+* Replace relative paths to noir-protocol-circuits ([67bcd82](https://github.com/AztecProtocol/aztec-packages/commit/67bcd8279f0d8921437a6f37e6ec3f25a69471a5))
+* Track avm proving time ([#7084](https://github.com/AztecProtocol/aztec-packages/issues/7084)) ([59df722](https://github.com/AztecProtocol/aztec-packages/commit/59df72249a8db2b6d1cf0c7908836041c84a54c1))
+* Ultra flavor cleanup ([#7070](https://github.com/AztecProtocol/aztec-packages/issues/7070)) ([77761c6](https://github.com/AztecProtocol/aztec-packages/commit/77761c670f2d516ab486de0f7bde036ff00ebd99))
+
 ## [0.43.0](https://github.com/AztecProtocol/aztec-packages/compare/aztec-packages-v0.42.0...aztec-packages-v0.43.0) (2024-06-18)
 
 
