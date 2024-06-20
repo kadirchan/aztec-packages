@@ -53,6 +53,7 @@ import { createDebugLogger } from '@aztec/foundation/log';
 import { promiseWithResolvers } from '@aztec/foundation/promise';
 import { BufferReader, type Tuple } from '@aztec/foundation/serialize';
 import { pushTestData } from '@aztec/foundation/testing';
+import { Attributes, type TelemetryClient, type Tracer, trackSpan } from '@aztec/telemetry-client';
 import { type MerkleTreeOperations } from '@aztec/world-state';
 
 import { inspect } from 'util';
@@ -91,7 +92,16 @@ export class ProvingOrchestrator {
   private pendingProvingJobs: AbortController[] = [];
   private paddingTx: PaddingProcessedTx | undefined = undefined;
 
-  constructor(private db: MerkleTreeOperations, private prover: ServerCircuitProver, private initialHeader?: Header) {}
+  public readonly tracer: Tracer;
+
+  constructor(
+    private db: MerkleTreeOperations,
+    private prover: ServerCircuitProver,
+    telemetryClient: TelemetryClient,
+    private initialHeader?: Header,
+  ) {
+    this.tracer = telemetryClient.getTracer('ProvingOrchestrator');
+  }
 
   /**
    * Resets the orchestrator's cached padding tx.
@@ -108,6 +118,10 @@ export class ProvingOrchestrator {
    * @param verificationKeys - The private kernel verification keys
    * @returns A proving ticket, containing a promise notifying of proving completion
    */
+  @trackSpan('startNewBlock', (numTxs, globalVariables) => ({
+    [Attributes.BLOCK_SIZE]: numTxs,
+    [Attributes.BLOCK_NUMBER]: globalVariables.blockNumber.toNumber(),
+  }))
   public async startNewBlock(
     numTxs: number,
     globalVariables: GlobalVariables,
@@ -193,6 +207,9 @@ export class ProvingOrchestrator {
    * The interface to add a simulated transaction to the scheduler
    * @param tx - The transaction to be proven
    */
+  @trackSpan('addNewTx', tx => ({
+    [Attributes.TX_HASH]: tx.hash.toString(),
+  }))
   public async addNewTx(tx: ProcessedTx): Promise<void> {
     if (!this.provingState) {
       throw new Error(`Invalid proving state, call startNewBlock before adding transactions`);
@@ -213,6 +230,13 @@ export class ProvingOrchestrator {
   /**
    * Marks the block as full and pads it to the full power of 2 block size, no more transactions will be accepted.
    */
+  @trackSpan('setBlockCompleted', function () {
+    return {
+      [Attributes.BLOCK_NUMBER]: this.provingState!.globalVariables.blockNumber.toNumber(),
+      [Attributes.BLOCK_SIZE]: this.provingState!.totalNumTxs,
+      [Attributes.BLOCK_TXS_COUNT]: this.provingState!.transactionsReceived,
+    };
+  })
   public async setBlockCompleted() {
     if (!this.provingState) {
       throw new Error(`Invalid proving state, call startNewBlock before adding transactions or completing the block`);
@@ -319,6 +343,13 @@ export class ProvingOrchestrator {
    * Performs the final tree update for the block and returns the fully proven block.
    * @returns The fully proven block and proof.
    */
+  @trackSpan('finaliseBlock', function () {
+    return {
+      [Attributes.BLOCK_NUMBER]: this.provingState!.globalVariables.blockNumber.toNumber(),
+      [Attributes.BLOCK_TXS_COUNT]: this.provingState!.transactionsReceived,
+      [Attributes.BLOCK_SIZE]: this.provingState!.totalNumTxs,
+    };
+  })
   public async finaliseBlock() {
     try {
       if (
@@ -496,6 +527,9 @@ export class ProvingOrchestrator {
   }
 
   // Updates the merkle trees for a transaction. The first enqueued job for a transaction
+  @trackSpan('prepareBaseRollupInputs', (_, tx) => ({
+    [Attributes.TX_HASH]: tx.hash.toString(),
+  }))
   private async prepareBaseRollupInputs(
     provingState: ProvingState | undefined,
     tx: ProcessedTx,

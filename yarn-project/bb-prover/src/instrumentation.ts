@@ -6,6 +6,7 @@ import {
   type Histogram,
   Metrics,
   type TelemetryClient,
+  type Tracer,
   ValueType,
 } from '@aztec/telemetry-client';
 
@@ -21,7 +22,10 @@ export class ProverInstrumentation {
   private circuitSize: Gauge;
   private circuitPublicInputCount: Gauge;
 
+  public readonly tracer: Tracer;
+
   constructor(telemetry: TelemetryClient, name: string = 'bb-prover') {
+    this.tracer = telemetry.getTracer(name);
     const meter = telemetry.getMeter(name);
     const msBuckets = [100, 250, 500, 1_000, 2_500, 5_000, 10_000, 30_000, 60_000, 90_000];
     this.simulationDuration = meter.createHistogram(Metrics.CIRCUIT_SIMULATION_DURATION, {

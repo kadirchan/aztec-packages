@@ -1,18 +1,28 @@
-import { Meter } from '@opentelemetry/api';
+import { Meter, Tracer, TracerProvider } from '@opentelemetry/api';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { HostMetrics } from '@opentelemetry/host-metrics';
 import { Resource } from '@opentelemetry/resources';
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import { BatchSpanProcessor, NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 
 import { TelemetryClient } from './telemetry.js';
 
 export class OpenTelemetryClient implements TelemetryClient {
   hostMetrics: HostMetrics | undefined;
-  protected constructor(private resource: Resource, private meterProvider: MeterProvider) {}
+  protected constructor(
+    private resource: Resource,
+    private meterProvider: MeterProvider,
+    private traceProvider: TracerProvider,
+  ) {}
 
   getMeter(name: string): Meter {
     return this.meterProvider.getMeter(name, this.resource.attributes[SEMRESATTRS_SERVICE_VERSION] as string);
+  }
+
+  getTracer(name: string): Tracer {
+    return this.traceProvider.getTracer(name, this.resource.attributes[SEMRESATTRS_SERVICE_VERSION] as string);
   }
 
   public start() {
@@ -34,6 +44,12 @@ export class OpenTelemetryClient implements TelemetryClient {
       [SEMRESATTRS_SERVICE_VERSION]: version,
     });
 
+    const tracerProvider = new NodeTracerProvider({
+      resource,
+    });
+    tracerProvider.addSpanProcessor(new BatchSpanProcessor(new OTLPTraceExporter({ hostname: collectorHostname })));
+    tracerProvider.register();
+
     const meterProvider = new MeterProvider({
       resource,
       readers: [
@@ -45,7 +61,7 @@ export class OpenTelemetryClient implements TelemetryClient {
       ],
     });
 
-    const service = new OpenTelemetryClient(resource, meterProvider);
+    const service = new OpenTelemetryClient(resource, meterProvider, tracerProvider);
     service.start();
 
     return service;
