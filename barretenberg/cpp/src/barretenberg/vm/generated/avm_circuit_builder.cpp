@@ -20,6 +20,7 @@ template <typename FF> std::vector<std::string> AvmFullRow<FF>::names()
 {
     return { "main_clk",
              "main_sel_first",
+             "main_sel_not_first",
              "alu_a_hi",
              "alu_a_lo",
              "alu_b_hi",
@@ -128,9 +129,87 @@ template <typename FF> std::vector<std::string> AvmFullRow<FF>::names()
              "conversion_num_limbs",
              "conversion_radix",
              "conversion_sel_to_radix_le",
-             "gas_da_gas_fixed_table",
-             "gas_l2_gas_fixed_table",
-             "gas_sel_gas_cost",
+             "instr_decomp_indirect",
+             "instr_decomp_o1",
+             "instr_decomp_o2",
+             "instr_decomp_o3",
+             "instr_decomp_o4",
+             "instr_decomp_o5",
+             "instr_decomp_o6",
+             "instr_decomp_o7",
+             "instr_decomp_o8",
+             "instr_decomp_opcode_val",
+             "instr_decomp_sel_decomposition",
+             "instr_spec_da_gas_op_cost",
+             "instr_spec_l2_gas_op_cost",
+             "instr_spec_rwa",
+             "instr_spec_rwb",
+             "instr_spec_rwc",
+             "instr_spec_rwd",
+             "instr_spec_sel_alu",
+             "instr_spec_sel_bin",
+             "instr_spec_sel_instr_spec",
+             "instr_spec_sel_mem_op_a",
+             "instr_spec_sel_mem_op_b",
+             "instr_spec_sel_mem_op_c",
+             "instr_spec_sel_mem_op_d",
+             "instr_spec_sel_mov_ia_to_ic",
+             "instr_spec_sel_mov_ib_to_ic",
+             "instr_spec_sel_op_add",
+             "instr_spec_sel_op_address",
+             "instr_spec_sel_op_and",
+             "instr_spec_sel_op_block_number",
+             "instr_spec_sel_op_cast",
+             "instr_spec_sel_op_chain_id",
+             "instr_spec_sel_op_cmov",
+             "instr_spec_sel_op_coinbase",
+             "instr_spec_sel_op_dagasleft",
+             "instr_spec_sel_op_div",
+             "instr_spec_sel_op_emit_l2_to_l1_msg",
+             "instr_spec_sel_op_emit_note_hash",
+             "instr_spec_sel_op_emit_nullifier",
+             "instr_spec_sel_op_emit_unencrypted_log",
+             "instr_spec_sel_op_eq",
+             "instr_spec_sel_op_external_call",
+             "instr_spec_sel_op_fdiv",
+             "instr_spec_sel_op_fee_per_da_gas",
+             "instr_spec_sel_op_fee_per_l2_gas",
+             "instr_spec_sel_op_get_contract_instance",
+             "instr_spec_sel_op_halt",
+             "instr_spec_sel_op_internal_call",
+             "instr_spec_sel_op_internal_return",
+             "instr_spec_sel_op_jump",
+             "instr_spec_sel_op_jumpi",
+             "instr_spec_sel_op_keccak",
+             "instr_spec_sel_op_l1_to_l2_msg_exists",
+             "instr_spec_sel_op_l2gasleft",
+             "instr_spec_sel_op_lt",
+             "instr_spec_sel_op_lte",
+             "instr_spec_sel_op_mov",
+             "instr_spec_sel_op_mul",
+             "instr_spec_sel_op_not",
+             "instr_spec_sel_op_note_hash_exists",
+             "instr_spec_sel_op_nullifier_exists",
+             "instr_spec_sel_op_or",
+             "instr_spec_sel_op_pedersen",
+             "instr_spec_sel_op_poseidon2",
+             "instr_spec_sel_op_radix_le",
+             "instr_spec_sel_op_sender",
+             "instr_spec_sel_op_sha256",
+             "instr_spec_sel_op_shl",
+             "instr_spec_sel_op_shr",
+             "instr_spec_sel_op_sload",
+             "instr_spec_sel_op_sstore",
+             "instr_spec_sel_op_storage_address",
+             "instr_spec_sel_op_sub",
+             "instr_spec_sel_op_timestamp",
+             "instr_spec_sel_op_transaction_fee",
+             "instr_spec_sel_op_version",
+             "instr_spec_sel_op_xor",
+             "instr_spec_sel_resolve_ind_addr_a",
+             "instr_spec_sel_resolve_ind_addr_b",
+             "instr_spec_sel_resolve_ind_addr_c",
+             "instr_spec_sel_resolve_ind_addr_d",
              "keccakf1600_clk",
              "keccakf1600_input",
              "keccakf1600_output",
@@ -328,6 +407,8 @@ template <typename FF> std::vector<std::string> AvmFullRow<FF>::names()
              "range_check_l2_gas_lo",
              "range_check_da_gas_hi",
              "range_check_da_gas_lo",
+             "lookup_instruction_spec",
+             "lookup_control_flow",
              "kernel_output_lookup",
              "lookup_into_kernel",
              "incl_main_tag_err",
@@ -369,6 +450,8 @@ template <typename FF> std::vector<std::string> AvmFullRow<FF>::names()
              "range_check_l2_gas_lo_counts",
              "range_check_da_gas_hi_counts",
              "range_check_da_gas_lo_counts",
+             "lookup_instruction_spec_counts",
+             "lookup_control_flow_counts",
              "kernel_output_lookup_counts",
              "lookup_into_kernel_counts",
              "incl_main_tag_err_counts",
@@ -410,18 +493,18 @@ template <typename FF> std::ostream& operator<<(std::ostream& os, AvmFullRow<FF>
 {
     return os
            << field_to_string(row.main_clk) << "," << field_to_string(row.main_sel_first) << ","
-           << field_to_string(row.alu_a_hi) << "," << field_to_string(row.alu_a_lo) << ","
-           << field_to_string(row.alu_b_hi) << "," << field_to_string(row.alu_b_lo) << ","
-           << field_to_string(row.alu_borrow) << "," << field_to_string(row.alu_cf) << ","
-           << field_to_string(row.alu_clk) << "," << field_to_string(row.alu_cmp_rng_ctr) << ","
-           << field_to_string(row.alu_div_u16_r0) << "," << field_to_string(row.alu_div_u16_r1) << ","
-           << field_to_string(row.alu_div_u16_r2) << "," << field_to_string(row.alu_div_u16_r3) << ","
-           << field_to_string(row.alu_div_u16_r4) << "," << field_to_string(row.alu_div_u16_r5) << ","
-           << field_to_string(row.alu_div_u16_r6) << "," << field_to_string(row.alu_div_u16_r7) << ","
-           << field_to_string(row.alu_divisor_hi) << "," << field_to_string(row.alu_divisor_lo) << ","
-           << field_to_string(row.alu_ff_tag) << "," << field_to_string(row.alu_ia) << ","
-           << field_to_string(row.alu_ib) << "," << field_to_string(row.alu_ic) << ","
-           << field_to_string(row.alu_in_tag) << "," << field_to_string(row.alu_op_add) << ","
+           << field_to_string(row.main_sel_not_first) << "," << field_to_string(row.alu_a_hi) << ","
+           << field_to_string(row.alu_a_lo) << "," << field_to_string(row.alu_b_hi) << ","
+           << field_to_string(row.alu_b_lo) << "," << field_to_string(row.alu_borrow) << ","
+           << field_to_string(row.alu_cf) << "," << field_to_string(row.alu_clk) << ","
+           << field_to_string(row.alu_cmp_rng_ctr) << "," << field_to_string(row.alu_div_u16_r0) << ","
+           << field_to_string(row.alu_div_u16_r1) << "," << field_to_string(row.alu_div_u16_r2) << ","
+           << field_to_string(row.alu_div_u16_r3) << "," << field_to_string(row.alu_div_u16_r4) << ","
+           << field_to_string(row.alu_div_u16_r5) << "," << field_to_string(row.alu_div_u16_r6) << ","
+           << field_to_string(row.alu_div_u16_r7) << "," << field_to_string(row.alu_divisor_hi) << ","
+           << field_to_string(row.alu_divisor_lo) << "," << field_to_string(row.alu_ff_tag) << ","
+           << field_to_string(row.alu_ia) << "," << field_to_string(row.alu_ib) << "," << field_to_string(row.alu_ic)
+           << "," << field_to_string(row.alu_in_tag) << "," << field_to_string(row.alu_op_add) << ","
            << field_to_string(row.alu_op_cast) << "," << field_to_string(row.alu_op_cast_prev) << ","
            << field_to_string(row.alu_op_div) << "," << field_to_string(row.alu_op_div_a_lt_b) << ","
            << field_to_string(row.alu_op_div_std) << "," << field_to_string(row.alu_op_eq) << ","
@@ -465,9 +548,61 @@ template <typename FF> std::ostream& operator<<(std::ostream& os, AvmFullRow<FF>
            << field_to_string(row.byte_lookup_table_output) << "," << field_to_string(row.conversion_clk) << ","
            << field_to_string(row.conversion_input) << "," << field_to_string(row.conversion_num_limbs) << ","
            << field_to_string(row.conversion_radix) << "," << field_to_string(row.conversion_sel_to_radix_le) << ","
-           << field_to_string(row.gas_da_gas_fixed_table) << "," << field_to_string(row.gas_l2_gas_fixed_table) << ","
-           << field_to_string(row.gas_sel_gas_cost) << "," << field_to_string(row.keccakf1600_clk) << ","
-           << field_to_string(row.keccakf1600_input) << "," << field_to_string(row.keccakf1600_output) << ","
+           << field_to_string(row.instr_decomp_indirect) << "," << field_to_string(row.instr_decomp_o1) << ","
+           << field_to_string(row.instr_decomp_o2) << "," << field_to_string(row.instr_decomp_o3) << ","
+           << field_to_string(row.instr_decomp_o4) << "," << field_to_string(row.instr_decomp_o5) << ","
+           << field_to_string(row.instr_decomp_o6) << "," << field_to_string(row.instr_decomp_o7) << ","
+           << field_to_string(row.instr_decomp_o8) << "," << field_to_string(row.instr_decomp_opcode_val) << ","
+           << field_to_string(row.instr_decomp_sel_decomposition) << ","
+           << field_to_string(row.instr_spec_da_gas_op_cost) << "," << field_to_string(row.instr_spec_l2_gas_op_cost)
+           << "," << field_to_string(row.instr_spec_rwa) << "," << field_to_string(row.instr_spec_rwb) << ","
+           << field_to_string(row.instr_spec_rwc) << "," << field_to_string(row.instr_spec_rwd) << ","
+           << field_to_string(row.instr_spec_sel_alu) << "," << field_to_string(row.instr_spec_sel_bin) << ","
+           << field_to_string(row.instr_spec_sel_instr_spec) << "," << field_to_string(row.instr_spec_sel_mem_op_a)
+           << "," << field_to_string(row.instr_spec_sel_mem_op_b) << "," << field_to_string(row.instr_spec_sel_mem_op_c)
+           << "," << field_to_string(row.instr_spec_sel_mem_op_d) << ","
+           << field_to_string(row.instr_spec_sel_mov_ia_to_ic) << ","
+           << field_to_string(row.instr_spec_sel_mov_ib_to_ic) << "," << field_to_string(row.instr_spec_sel_op_add)
+           << "," << field_to_string(row.instr_spec_sel_op_address) << "," << field_to_string(row.instr_spec_sel_op_and)
+           << "," << field_to_string(row.instr_spec_sel_op_block_number) << ","
+           << field_to_string(row.instr_spec_sel_op_cast) << "," << field_to_string(row.instr_spec_sel_op_chain_id)
+           << "," << field_to_string(row.instr_spec_sel_op_cmov) << ","
+           << field_to_string(row.instr_spec_sel_op_coinbase) << "," << field_to_string(row.instr_spec_sel_op_dagasleft)
+           << "," << field_to_string(row.instr_spec_sel_op_div) << ","
+           << field_to_string(row.instr_spec_sel_op_emit_l2_to_l1_msg) << ","
+           << field_to_string(row.instr_spec_sel_op_emit_note_hash) << ","
+           << field_to_string(row.instr_spec_sel_op_emit_nullifier) << ","
+           << field_to_string(row.instr_spec_sel_op_emit_unencrypted_log) << ","
+           << field_to_string(row.instr_spec_sel_op_eq) << "," << field_to_string(row.instr_spec_sel_op_external_call)
+           << "," << field_to_string(row.instr_spec_sel_op_fdiv) << ","
+           << field_to_string(row.instr_spec_sel_op_fee_per_da_gas) << ","
+           << field_to_string(row.instr_spec_sel_op_fee_per_l2_gas) << ","
+           << field_to_string(row.instr_spec_sel_op_get_contract_instance) << ","
+           << field_to_string(row.instr_spec_sel_op_halt) << "," << field_to_string(row.instr_spec_sel_op_internal_call)
+           << "," << field_to_string(row.instr_spec_sel_op_internal_return) << ","
+           << field_to_string(row.instr_spec_sel_op_jump) << "," << field_to_string(row.instr_spec_sel_op_jumpi) << ","
+           << field_to_string(row.instr_spec_sel_op_keccak) << ","
+           << field_to_string(row.instr_spec_sel_op_l1_to_l2_msg_exists) << ","
+           << field_to_string(row.instr_spec_sel_op_l2gasleft) << "," << field_to_string(row.instr_spec_sel_op_lt)
+           << "," << field_to_string(row.instr_spec_sel_op_lte) << "," << field_to_string(row.instr_spec_sel_op_mov)
+           << "," << field_to_string(row.instr_spec_sel_op_mul) << "," << field_to_string(row.instr_spec_sel_op_not)
+           << "," << field_to_string(row.instr_spec_sel_op_note_hash_exists) << ","
+           << field_to_string(row.instr_spec_sel_op_nullifier_exists) << ","
+           << field_to_string(row.instr_spec_sel_op_or) << "," << field_to_string(row.instr_spec_sel_op_pedersen) << ","
+           << field_to_string(row.instr_spec_sel_op_poseidon2) << "," << field_to_string(row.instr_spec_sel_op_radix_le)
+           << "," << field_to_string(row.instr_spec_sel_op_sender) << ","
+           << field_to_string(row.instr_spec_sel_op_sha256) << "," << field_to_string(row.instr_spec_sel_op_shl) << ","
+           << field_to_string(row.instr_spec_sel_op_shr) << "," << field_to_string(row.instr_spec_sel_op_sload) << ","
+           << field_to_string(row.instr_spec_sel_op_sstore) << ","
+           << field_to_string(row.instr_spec_sel_op_storage_address) << ","
+           << field_to_string(row.instr_spec_sel_op_sub) << "," << field_to_string(row.instr_spec_sel_op_timestamp)
+           << "," << field_to_string(row.instr_spec_sel_op_transaction_fee) << ","
+           << field_to_string(row.instr_spec_sel_op_version) << "," << field_to_string(row.instr_spec_sel_op_xor) << ","
+           << field_to_string(row.instr_spec_sel_resolve_ind_addr_a) << ","
+           << field_to_string(row.instr_spec_sel_resolve_ind_addr_b) << ","
+           << field_to_string(row.instr_spec_sel_resolve_ind_addr_c) << ","
+           << field_to_string(row.instr_spec_sel_resolve_ind_addr_d) << "," << field_to_string(row.keccakf1600_clk)
+           << "," << field_to_string(row.keccakf1600_input) << "," << field_to_string(row.keccakf1600_output) << ","
            << field_to_string(row.keccakf1600_sel_keccakf1600) << ","
            << field_to_string(row.kernel_emit_l2_to_l1_msg_write_offset) << ","
            << field_to_string(row.kernel_emit_note_hash_write_offset) << ","
@@ -576,6 +711,7 @@ template <typename FF> std::ostream& operator<<(std::ostream& os, AvmFullRow<FF>
            << "," << field_to_string(row.lookup_byte_operations) << "," << field_to_string(row.lookup_opcode_gas) << ","
            << field_to_string(row.range_check_l2_gas_hi) << "," << field_to_string(row.range_check_l2_gas_lo) << ","
            << field_to_string(row.range_check_da_gas_hi) << "," << field_to_string(row.range_check_da_gas_lo) << ","
+           << field_to_string(row.lookup_instruction_spec) << "," << field_to_string(row.lookup_control_flow) << ","
            << field_to_string(row.kernel_output_lookup) << "," << field_to_string(row.lookup_into_kernel) << ","
            << field_to_string(row.incl_main_tag_err) << "," << field_to_string(row.incl_mem_tag_err) << ","
            << field_to_string(row.lookup_mem_rng_chk_lo) << "," << field_to_string(row.lookup_mem_rng_chk_mid) << ","
@@ -599,10 +735,12 @@ template <typename FF> std::ostream& operator<<(std::ostream& os, AvmFullRow<FF>
            << field_to_string(row.range_check_l2_gas_lo_counts) << ","
            << field_to_string(row.range_check_da_gas_hi_counts) << ","
            << field_to_string(row.range_check_da_gas_lo_counts) << ","
-           << field_to_string(row.kernel_output_lookup_counts) << "," << field_to_string(row.lookup_into_kernel_counts)
-           << "," << field_to_string(row.incl_main_tag_err_counts) << ","
-           << field_to_string(row.incl_mem_tag_err_counts) << "," << field_to_string(row.lookup_mem_rng_chk_lo_counts)
-           << "," << field_to_string(row.lookup_mem_rng_chk_mid_counts) << ","
+           << field_to_string(row.lookup_instruction_spec_counts) << ","
+           << field_to_string(row.lookup_control_flow_counts) << "," << field_to_string(row.kernel_output_lookup_counts)
+           << "," << field_to_string(row.lookup_into_kernel_counts) << ","
+           << field_to_string(row.incl_main_tag_err_counts) << "," << field_to_string(row.incl_mem_tag_err_counts)
+           << "," << field_to_string(row.lookup_mem_rng_chk_lo_counts) << ","
+           << field_to_string(row.lookup_mem_rng_chk_mid_counts) << ","
            << field_to_string(row.lookup_mem_rng_chk_hi_counts) << "," << field_to_string(row.lookup_pow_2_0_counts)
            << "," << field_to_string(row.lookup_pow_2_1_counts) << "," << field_to_string(row.lookup_u8_0_counts) << ","
            << field_to_string(row.lookup_u8_1_counts) << "," << field_to_string(row.lookup_u16_0_counts) << ","

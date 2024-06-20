@@ -23,7 +23,7 @@ namespace bb {
  * FF>>;)`
  *
  */
-class lookup_opcode_gas_lookup_settings {
+class lookup_control_flow_lookup_settings {
   public:
     /**
      * @brief The number of read terms (how many lookups we perform) in each row
@@ -54,7 +54,7 @@ class lookup_opcode_gas_lookup_settings {
      * basic tuple
      *
      */
-    static constexpr size_t LOOKUP_TUPLE_SIZE = 3;
+    static constexpr size_t LOOKUP_TUPLE_SIZE = 2;
 
     /**
      * @brief The polynomial degree of the relation telling us if the inverse polynomial value needs to be computed
@@ -87,7 +87,7 @@ class lookup_opcode_gas_lookup_settings {
 
     template <typename AllEntities> static inline auto inverse_polynomial_is_computed_at_row(const AllEntities& in)
     {
-        return (in.main_sel_gas_accounting_active == 1 || in.instr_spec_sel_instr_spec == 1);
+        return (in.main_sel_not_first == 1 || in.instr_decomp_sel_decomposition == 1);
     }
 
     /**
@@ -104,8 +104,8 @@ class lookup_opcode_gas_lookup_settings {
     static inline auto compute_inverse_exists(const AllEntities& in)
     {
         using View = typename Accumulator::View;
-        const auto is_operation = View(in.main_sel_gas_accounting_active);
-        const auto is_table_entry = View(in.instr_spec_sel_instr_spec);
+        const auto is_operation = View(in.main_sel_not_first);
+        const auto is_table_entry = View(in.instr_decomp_sel_decomposition);
         return (is_operation + is_table_entry - is_operation * is_table_entry);
     }
 
@@ -133,16 +133,14 @@ class lookup_opcode_gas_lookup_settings {
     template <typename AllEntities> static inline auto get_const_entities(const AllEntities& in)
     {
 
-        return std::forward_as_tuple(in.lookup_opcode_gas,
-                                     in.lookup_opcode_gas_counts,
-                                     in.main_sel_gas_accounting_active,
-                                     in.instr_spec_sel_instr_spec,
+        return std::forward_as_tuple(in.lookup_control_flow,
+                                     in.lookup_control_flow_counts,
+                                     in.main_sel_not_first,
+                                     in.instr_decomp_sel_decomposition,
+                                     in.main_pc,
                                      in.main_opcode_val,
-                                     in.main_l2_gas_op_cost,
-                                     in.main_da_gas_op_cost,
                                      in.main_clk,
-                                     in.instr_spec_l2_gas_op_cost,
-                                     in.instr_spec_da_gas_op_cost);
+                                     in.main_opcode_val);
     }
 
     /**
@@ -155,21 +153,19 @@ class lookup_opcode_gas_lookup_settings {
     template <typename AllEntities> static inline auto get_nonconst_entities(AllEntities& in)
     {
 
-        return std::forward_as_tuple(in.lookup_opcode_gas,
-                                     in.lookup_opcode_gas_counts,
-                                     in.main_sel_gas_accounting_active,
-                                     in.instr_spec_sel_instr_spec,
+        return std::forward_as_tuple(in.lookup_control_flow,
+                                     in.lookup_control_flow_counts,
+                                     in.main_sel_not_first,
+                                     in.instr_decomp_sel_decomposition,
+                                     in.main_pc,
                                      in.main_opcode_val,
-                                     in.main_l2_gas_op_cost,
-                                     in.main_da_gas_op_cost,
                                      in.main_clk,
-                                     in.instr_spec_l2_gas_op_cost,
-                                     in.instr_spec_da_gas_op_cost);
+                                     in.main_opcode_val);
     }
 };
 
 template <typename FF_>
-using lookup_opcode_gas_relation = GenericLookupRelation<lookup_opcode_gas_lookup_settings, FF_>;
-template <typename FF_> using lookup_opcode_gas = GenericLookup<lookup_opcode_gas_lookup_settings, FF_>;
+using lookup_control_flow_relation = GenericLookupRelation<lookup_control_flow_lookup_settings, FF_>;
+template <typename FF_> using lookup_control_flow = GenericLookup<lookup_control_flow_lookup_settings, FF_>;
 
 } // namespace bb

@@ -1,0 +1,15 @@
+namespace instr_decomp(256);
+    // The row number ("clk") will be the implicit PC.
+    pol commit sel_decomposition;
+    pol commit opcode_val;
+    pol commit indirect;
+
+    // raw operands
+    pol commit o1;
+    pol commit o2;
+    pol commit o3;
+    pol commit o4;
+    pol commit o5;
+    pol commit o6;
+    pol commit o7;
+    pol commit o8;

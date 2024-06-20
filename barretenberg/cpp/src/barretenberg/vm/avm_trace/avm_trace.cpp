@@ -4800,9 +4800,9 @@ std::vector<Row> AvmTraceBuilder::finalize(uint32_t min_trace_size, bool range_c
     for (auto const& [opcode, gas_entry] : GAS_COST_TABLE) {
         auto& dest = main_trace.at(static_cast<size_t>(opcode));
 
-        dest.gas_sel_gas_cost = FF(1);
-        dest.gas_l2_gas_fixed_table = gas_entry.l2_fixed_gas_cost;
-        dest.gas_da_gas_fixed_table = gas_entry.da_fixed_gas_cost;
+        dest.instr_spec_sel_instr_spec = FF(1);
+        dest.instr_spec_l2_gas_op_cost = gas_entry.l2_fixed_gas_cost;
+        dest.instr_spec_da_gas_op_cost = gas_entry.da_fixed_gas_cost;
     }
 
     // Finalise gas left lookup counts

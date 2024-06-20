@@ -18,11 +18,13 @@
 #include "barretenberg/relations/generated/avm/conversion.hpp"
 #include "barretenberg/relations/generated/avm/incl_main_tag_err.hpp"
 #include "barretenberg/relations/generated/avm/incl_mem_tag_err.hpp"
+#include "barretenberg/relations/generated/avm/instr_spec.hpp"
 #include "barretenberg/relations/generated/avm/keccakf1600.hpp"
 #include "barretenberg/relations/generated/avm/kernel.hpp"
 #include "barretenberg/relations/generated/avm/kernel_output_lookup.hpp"
 #include "barretenberg/relations/generated/avm/lookup_byte_lengths.hpp"
 #include "barretenberg/relations/generated/avm/lookup_byte_operations.hpp"
+#include "barretenberg/relations/generated/avm/lookup_control_flow.hpp"
 #include "barretenberg/relations/generated/avm/lookup_div_u16_0.hpp"
 #include "barretenberg/relations/generated/avm/lookup_div_u16_1.hpp"
 #include "barretenberg/relations/generated/avm/lookup_div_u16_2.hpp"
@@ -31,6 +33,7 @@
 #include "barretenberg/relations/generated/avm/lookup_div_u16_5.hpp"
 #include "barretenberg/relations/generated/avm/lookup_div_u16_6.hpp"
 #include "barretenberg/relations/generated/avm/lookup_div_u16_7.hpp"
+#include "barretenberg/relations/generated/avm/lookup_instruction_spec.hpp"
 #include "barretenberg/relations/generated/avm/lookup_into_kernel.hpp"
 #include "barretenberg/relations/generated/avm/lookup_mem_rng_chk_hi.hpp"
 #include "barretenberg/relations/generated/avm/lookup_mem_rng_chk_lo.hpp"
@@ -97,12 +100,12 @@ class AvmFlavor {
     using VerifierCommitmentKey = bb::VerifierCommitmentKey<Curve>;
     using RelationSeparator = FF;
 
-    static constexpr size_t NUM_PRECOMPUTED_ENTITIES = 2;
-    static constexpr size_t NUM_WITNESS_ENTITIES = 383;
+    static constexpr size_t NUM_PRECOMPUTED_ENTITIES = 3;
+    static constexpr size_t NUM_WITNESS_ENTITIES = 465;
     static constexpr size_t NUM_WIRES = NUM_WITNESS_ENTITIES + NUM_PRECOMPUTED_ENTITIES;
     // We have two copies of the witness entities, so we subtract the number of fixed ones (they have no shift), one for
     // the unshifted and one for the shifted
-    static constexpr size_t NUM_ALL_ENTITIES = 450;
+    static constexpr size_t NUM_ALL_ENTITIES = 533;
 
     using GrandProductRelations = std::tuple<perm_main_alu_relation<FF>,
                                              perm_main_bin_relation<FF>,
@@ -124,6 +127,8 @@ class AvmFlavor {
                                              range_check_l2_gas_lo_relation<FF>,
                                              range_check_da_gas_hi_relation<FF>,
                                              range_check_da_gas_lo_relation<FF>,
+                                             lookup_instruction_spec_relation<FF>,
+                                             lookup_control_flow_relation<FF>,
                                              kernel_output_lookup_relation<FF>,
                                              lookup_into_kernel_relation<FF>,
                                              incl_main_tag_err_relation<FF>,
@@ -162,6 +167,7 @@ class AvmFlavor {
     using Relations = std::tuple<Avm_vm::alu<FF>,
                                  Avm_vm::binary<FF>,
                                  Avm_vm::conversion<FF>,
+                                 Avm_vm::instr_spec<FF>,
                                  Avm_vm::keccakf1600<FF>,
                                  Avm_vm::kernel<FF>,
                                  Avm_vm::main<FF>,
@@ -189,6 +195,8 @@ class AvmFlavor {
                                  range_check_l2_gas_lo_relation<FF>,
                                  range_check_da_gas_hi_relation<FF>,
                                  range_check_da_gas_lo_relation<FF>,
+                                 lookup_instruction_spec_relation<FF>,
+                                 lookup_control_flow_relation<FF>,
                                  kernel_output_lookup_relation<FF>,
                                  lookup_into_kernel_relation<FF>,
                                  incl_main_tag_err_relation<FF>,
@@ -245,9 +253,9 @@ class AvmFlavor {
       public:
         using DataType = DataType_;
 
-        DEFINE_FLAVOR_MEMBERS(DataType, main_clk, main_sel_first)
+        DEFINE_FLAVOR_MEMBERS(DataType, main_clk, main_sel_first, main_sel_not_first)
 
-        RefVector<DataType> get_selectors() { return { main_clk, main_sel_first }; };
+        RefVector<DataType> get_selectors() { return { main_clk, main_sel_first, main_sel_not_first }; };
         RefVector<DataType> get_sigma_polynomials() { return {}; };
         RefVector<DataType> get_id_polynomials() { return {}; };
         RefVector<DataType> get_table_polynomials() { return {}; };
@@ -364,9 +372,87 @@ class AvmFlavor {
                               conversion_num_limbs,
                               conversion_radix,
                               conversion_sel_to_radix_le,
-                              gas_da_gas_fixed_table,
-                              gas_l2_gas_fixed_table,
-                              gas_sel_gas_cost,
+                              instr_decomp_indirect,
+                              instr_decomp_o1,
+                              instr_decomp_o2,
+                              instr_decomp_o3,
+                              instr_decomp_o4,
+                              instr_decomp_o5,
+                              instr_decomp_o6,
+                              instr_decomp_o7,
+                              instr_decomp_o8,
+                              instr_decomp_opcode_val,
+                              instr_decomp_sel_decomposition,
+                              instr_spec_da_gas_op_cost,
+                              instr_spec_l2_gas_op_cost,
+                              instr_spec_rwa,
+                              instr_spec_rwb,
+                              instr_spec_rwc,
+                              instr_spec_rwd,
+                              instr_spec_sel_alu,
+                              instr_spec_sel_bin,
+                              instr_spec_sel_instr_spec,
+                              instr_spec_sel_mem_op_a,
+                              instr_spec_sel_mem_op_b,
+                              instr_spec_sel_mem_op_c,
+                              instr_spec_sel_mem_op_d,
+                              instr_spec_sel_mov_ia_to_ic,
+                              instr_spec_sel_mov_ib_to_ic,
+                              instr_spec_sel_op_add,
+                              instr_spec_sel_op_address,
+                              instr_spec_sel_op_and,
+                              instr_spec_sel_op_block_number,
+                              instr_spec_sel_op_cast,
+                              instr_spec_sel_op_chain_id,
+                              instr_spec_sel_op_cmov,
+                              instr_spec_sel_op_coinbase,
+                              instr_spec_sel_op_dagasleft,
+                              instr_spec_sel_op_div,
+                              instr_spec_sel_op_emit_l2_to_l1_msg,
+                              instr_spec_sel_op_emit_note_hash,
+                              instr_spec_sel_op_emit_nullifier,
+                              instr_spec_sel_op_emit_unencrypted_log,
+                              instr_spec_sel_op_eq,
+                              instr_spec_sel_op_external_call,
+                              instr_spec_sel_op_fdiv,
+                              instr_spec_sel_op_fee_per_da_gas,
+                              instr_spec_sel_op_fee_per_l2_gas,
+                              instr_spec_sel_op_get_contract_instance,
+                              instr_spec_sel_op_halt,
+                              instr_spec_sel_op_internal_call,
+                              instr_spec_sel_op_internal_return,
+                              instr_spec_sel_op_jump,
+                              instr_spec_sel_op_jumpi,
+                              instr_spec_sel_op_keccak,
+                              instr_spec_sel_op_l1_to_l2_msg_exists,
+                              instr_spec_sel_op_l2gasleft,
+                              instr_spec_sel_op_lt,
+                              instr_spec_sel_op_lte,
+                              instr_spec_sel_op_mov,
+                              instr_spec_sel_op_mul,
+                              instr_spec_sel_op_not,
+                              instr_spec_sel_op_note_hash_exists,
+                              instr_spec_sel_op_nullifier_exists,
+                              instr_spec_sel_op_or,
+                              instr_spec_sel_op_pedersen,
+                              instr_spec_sel_op_poseidon2,
+                              instr_spec_sel_op_radix_le,
+                              instr_spec_sel_op_sender,
+                              instr_spec_sel_op_sha256,
+                              instr_spec_sel_op_shl,
+                              instr_spec_sel_op_shr,
+                              instr_spec_sel_op_sload,
+                              instr_spec_sel_op_sstore,
+                              instr_spec_sel_op_storage_address,
+                              instr_spec_sel_op_sub,
+                              instr_spec_sel_op_timestamp,
+                              instr_spec_sel_op_transaction_fee,
+                              instr_spec_sel_op_version,
+                              instr_spec_sel_op_xor,
+                              instr_spec_sel_resolve_ind_addr_a,
+                              instr_spec_sel_resolve_ind_addr_b,
+                              instr_spec_sel_resolve_ind_addr_c,
+                              instr_spec_sel_resolve_ind_addr_d,
                               keccakf1600_clk,
                               keccakf1600_input,
                               keccakf1600_output,
@@ -564,6 +650,8 @@ class AvmFlavor {
                               range_check_l2_gas_lo,
                               range_check_da_gas_hi,
                               range_check_da_gas_lo,
+                              lookup_instruction_spec,
+                              lookup_control_flow,
                               kernel_output_lookup,
                               lookup_into_kernel,
                               incl_main_tag_err,
@@ -605,6 +693,8 @@ class AvmFlavor {
                               range_check_l2_gas_lo_counts,
                               range_check_da_gas_hi_counts,
                               range_check_da_gas_lo_counts,
+                              lookup_instruction_spec_counts,
+                              lookup_control_flow_counts,
                               kernel_output_lookup_counts,
                               lookup_into_kernel_counts,
                               incl_main_tag_err_counts,
@@ -750,9 +840,87 @@ class AvmFlavor {
                      conversion_num_limbs,
                      conversion_radix,
                      conversion_sel_to_radix_le,
-                     gas_da_gas_fixed_table,
-                     gas_l2_gas_fixed_table,
-                     gas_sel_gas_cost,
+                     instr_decomp_indirect,
+                     instr_decomp_o1,
+                     instr_decomp_o2,
+                     instr_decomp_o3,
+                     instr_decomp_o4,
+                     instr_decomp_o5,
+                     instr_decomp_o6,
+                     instr_decomp_o7,
+                     instr_decomp_o8,
+                     instr_decomp_opcode_val,
+                     instr_decomp_sel_decomposition,
+                     instr_spec_da_gas_op_cost,
+                     instr_spec_l2_gas_op_cost,
+                     instr_spec_rwa,
+                     instr_spec_rwb,
+                     instr_spec_rwc,
+                     instr_spec_rwd,
+                     instr_spec_sel_alu,
+                     instr_spec_sel_bin,
+                     instr_spec_sel_instr_spec,
+                     instr_spec_sel_mem_op_a,
+                     instr_spec_sel_mem_op_b,
+                     instr_spec_sel_mem_op_c,
+                     instr_spec_sel_mem_op_d,
+                     instr_spec_sel_mov_ia_to_ic,
+                     instr_spec_sel_mov_ib_to_ic,
+                     instr_spec_sel_op_add,
+                     instr_spec_sel_op_address,
+                     instr_spec_sel_op_and,
+                     instr_spec_sel_op_block_number,
+                     instr_spec_sel_op_cast,
+                     instr_spec_sel_op_chain_id,
+                     instr_spec_sel_op_cmov,
+                     instr_spec_sel_op_coinbase,
+                     instr_spec_sel_op_dagasleft,
+                     instr_spec_sel_op_div,
+                     instr_spec_sel_op_emit_l2_to_l1_msg,
+                     instr_spec_sel_op_emit_note_hash,
+                     instr_spec_sel_op_emit_nullifier,
+                     instr_spec_sel_op_emit_unencrypted_log,
+                     instr_spec_sel_op_eq,
+                     instr_spec_sel_op_external_call,
+                     instr_spec_sel_op_fdiv,
+                     instr_spec_sel_op_fee_per_da_gas,
+                     instr_spec_sel_op_fee_per_l2_gas,
+                     instr_spec_sel_op_get_contract_instance,
+                     instr_spec_sel_op_halt,
+                     instr_spec_sel_op_internal_call,
+                     instr_spec_sel_op_internal_return,
+                     instr_spec_sel_op_jump,
+                     instr_spec_sel_op_jumpi,
+                     instr_spec_sel_op_keccak,
+                     instr_spec_sel_op_l1_to_l2_msg_exists,
+                     instr_spec_sel_op_l2gasleft,
+                     instr_spec_sel_op_lt,
+                     instr_spec_sel_op_lte,
+                     instr_spec_sel_op_mov,
+                     instr_spec_sel_op_mul,
+                     instr_spec_sel_op_not,
+                     instr_spec_sel_op_note_hash_exists,
+                     instr_spec_sel_op_nullifier_exists,
+                     instr_spec_sel_op_or,
+                     instr_spec_sel_op_pedersen,
+                     instr_spec_sel_op_poseidon2,
+                     instr_spec_sel_op_radix_le,
+                     instr_spec_sel_op_sender,
+                     instr_spec_sel_op_sha256,
+                     instr_spec_sel_op_shl,
+                     instr_spec_sel_op_shr,
+                     instr_spec_sel_op_sload,
+                     instr_spec_sel_op_sstore,
+                     instr_spec_sel_op_storage_address,
+                     instr_spec_sel_op_sub,
+                     instr_spec_sel_op_timestamp,
+                     instr_spec_sel_op_transaction_fee,
+                     instr_spec_sel_op_version,
+                     instr_spec_sel_op_xor,
+                     instr_spec_sel_resolve_ind_addr_a,
+                     instr_spec_sel_resolve_ind_addr_b,
+                     instr_spec_sel_resolve_ind_addr_c,
+                     instr_spec_sel_resolve_ind_addr_d,
                      keccakf1600_clk,
                      keccakf1600_input,
                      keccakf1600_output,
@@ -950,6 +1118,8 @@ class AvmFlavor {
                      range_check_l2_gas_lo,
                      range_check_da_gas_hi,
                      range_check_da_gas_lo,
+                     lookup_instruction_spec,
+                     lookup_control_flow,
                      kernel_output_lookup,
                      lookup_into_kernel,
                      incl_main_tag_err,
@@ -991,6 +1161,8 @@ class AvmFlavor {
                      range_check_l2_gas_lo_counts,
                      range_check_da_gas_hi_counts,
                      range_check_da_gas_lo_counts,
+                     lookup_instruction_spec_counts,
+                     lookup_control_flow_counts,
                      kernel_output_lookup_counts,
                      lookup_into_kernel_counts,
                      incl_main_tag_err_counts,
@@ -1033,6 +1205,7 @@ class AvmFlavor {
         DEFINE_FLAVOR_MEMBERS(DataType,
                               main_clk,
                               main_sel_first,
+                              main_sel_not_first,
                               alu_a_hi,
                               alu_a_lo,
                               alu_b_hi,
@@ -1141,9 +1314,87 @@ class AvmFlavor {
                               conversion_num_limbs,
                               conversion_radix,
                               conversion_sel_to_radix_le,
-                              gas_da_gas_fixed_table,
-                              gas_l2_gas_fixed_table,
-                              gas_sel_gas_cost,
+                              instr_decomp_indirect,
+                              instr_decomp_o1,
+                              instr_decomp_o2,
+                              instr_decomp_o3,
+                              instr_decomp_o4,
+                              instr_decomp_o5,
+                              instr_decomp_o6,
+                              instr_decomp_o7,
+                              instr_decomp_o8,
+                              instr_decomp_opcode_val,
+                              instr_decomp_sel_decomposition,
+                              instr_spec_da_gas_op_cost,
+                              instr_spec_l2_gas_op_cost,
+                              instr_spec_rwa,
+                              instr_spec_rwb,
+                              instr_spec_rwc,
+                              instr_spec_rwd,
+                              instr_spec_sel_alu,
+                              instr_spec_sel_bin,
+                              instr_spec_sel_instr_spec,
+                              instr_spec_sel_mem_op_a,
+                              instr_spec_sel_mem_op_b,
+                              instr_spec_sel_mem_op_c,
+                              instr_spec_sel_mem_op_d,
+                              instr_spec_sel_mov_ia_to_ic,
+                              instr_spec_sel_mov_ib_to_ic,
+                              instr_spec_sel_op_add,
+                              instr_spec_sel_op_address,
+                              instr_spec_sel_op_and,
+                              instr_spec_sel_op_block_number,
+                              instr_spec_sel_op_cast,
+                              instr_spec_sel_op_chain_id,
+                              instr_spec_sel_op_cmov,
+                              instr_spec_sel_op_coinbase,
+                              instr_spec_sel_op_dagasleft,
+                              instr_spec_sel_op_div,
+                              instr_spec_sel_op_emit_l2_to_l1_msg,
+                              instr_spec_sel_op_emit_note_hash,
+                              instr_spec_sel_op_emit_nullifier,
+                              instr_spec_sel_op_emit_unencrypted_log,
+                              instr_spec_sel_op_eq,
+                              instr_spec_sel_op_external_call,
+                              instr_spec_sel_op_fdiv,
+                              instr_spec_sel_op_fee_per_da_gas,
+                              instr_spec_sel_op_fee_per_l2_gas,
+                              instr_spec_sel_op_get_contract_instance,
+                              instr_spec_sel_op_halt,
+                              instr_spec_sel_op_internal_call,
+                              instr_spec_sel_op_internal_return,
+                              instr_spec_sel_op_jump,
+                              instr_spec_sel_op_jumpi,
+                              instr_spec_sel_op_keccak,
+                              instr_spec_sel_op_l1_to_l2_msg_exists,
+                              instr_spec_sel_op_l2gasleft,
+                              instr_spec_sel_op_lt,
+                              instr_spec_sel_op_lte,
+                              instr_spec_sel_op_mov,
+                              instr_spec_sel_op_mul,
+                              instr_spec_sel_op_not,
+                              instr_spec_sel_op_note_hash_exists,
+                              instr_spec_sel_op_nullifier_exists,
+                              instr_spec_sel_op_or,
+                              instr_spec_sel_op_pedersen,
+                              instr_spec_sel_op_poseidon2,
+                              instr_spec_sel_op_radix_le,
+                              instr_spec_sel_op_sender,
+                              instr_spec_sel_op_sha256,
+                              instr_spec_sel_op_shl,
+                              instr_spec_sel_op_shr,
+                              instr_spec_sel_op_sload,
+                              instr_spec_sel_op_sstore,
+                              instr_spec_sel_op_storage_address,
+                              instr_spec_sel_op_sub,
+                              instr_spec_sel_op_timestamp,
+                              instr_spec_sel_op_transaction_fee,
+                              instr_spec_sel_op_version,
+                              instr_spec_sel_op_xor,
+                              instr_spec_sel_resolve_ind_addr_a,
+                              instr_spec_sel_resolve_ind_addr_b,
+                              instr_spec_sel_resolve_ind_addr_c,
+                              instr_spec_sel_resolve_ind_addr_d,
                               keccakf1600_clk,
                               keccakf1600_input,
                               keccakf1600_output,
@@ -1341,6 +1592,8 @@ class AvmFlavor {
                               range_check_l2_gas_lo,
                               range_check_da_gas_hi,
                               range_check_da_gas_lo,
+                              lookup_instruction_spec,
+                              lookup_control_flow,
                               kernel_output_lookup,
                               lookup_into_kernel,
                               incl_main_tag_err,
@@ -1382,6 +1635,8 @@ class AvmFlavor {
                               range_check_l2_gas_lo_counts,
                               range_check_da_gas_hi_counts,
                               range_check_da_gas_lo_counts,
+                              lookup_instruction_spec_counts,
+                              lookup_control_flow_counts,
                               kernel_output_lookup_counts,
                               lookup_into_kernel_counts,
                               incl_main_tag_err_counts,
@@ -1486,6 +1741,7 @@ class AvmFlavor {
         {
             return { main_clk,
                      main_sel_first,
+                     main_sel_not_first,
                      alu_a_hi,
                      alu_a_lo,
                      alu_b_hi,
@@ -1594,9 +1850,87 @@ class AvmFlavor {
                      conversion_num_limbs,
                      conversion_radix,
                      conversion_sel_to_radix_le,
-                     gas_da_gas_fixed_table,
-                     gas_l2_gas_fixed_table,
-                     gas_sel_gas_cost,
+                     instr_decomp_indirect,
+                     instr_decomp_o1,
+                     instr_decomp_o2,
+                     instr_decomp_o3,
+                     instr_decomp_o4,
+                     instr_decomp_o5,
+                     instr_decomp_o6,
+                     instr_decomp_o7,
+                     instr_decomp_o8,
+                     instr_decomp_opcode_val,
+                     instr_decomp_sel_decomposition,
+                     instr_spec_da_gas_op_cost,
+                     instr_spec_l2_gas_op_cost,
+                     instr_spec_rwa,
+                     instr_spec_rwb,
+                     instr_spec_rwc,
+                     instr_spec_rwd,
+                     instr_spec_sel_alu,
+                     instr_spec_sel_bin,
+                     instr_spec_sel_instr_spec,
+                     instr_spec_sel_mem_op_a,
+                     instr_spec_sel_mem_op_b,
+                     instr_spec_sel_mem_op_c,
+                     instr_spec_sel_mem_op_d,
+                     instr_spec_sel_mov_ia_to_ic,
+                     instr_spec_sel_mov_ib_to_ic,
+                     instr_spec_sel_op_add,
+                     instr_spec_sel_op_address,
+                     instr_spec_sel_op_and,
+                     instr_spec_sel_op_block_number,
+                     instr_spec_sel_op_cast,
+                     instr_spec_sel_op_chain_id,
+                     instr_spec_sel_op_cmov,
+                     instr_spec_sel_op_coinbase,
+                     instr_spec_sel_op_dagasleft,
+                     instr_spec_sel_op_div,
+                     instr_spec_sel_op_emit_l2_to_l1_msg,
+                     instr_spec_sel_op_emit_note_hash,
+                     instr_spec_sel_op_emit_nullifier,
+                     instr_spec_sel_op_emit_unencrypted_log,
+                     instr_spec_sel_op_eq,
+                     instr_spec_sel_op_external_call,
+                     instr_spec_sel_op_fdiv,
+                     instr_spec_sel_op_fee_per_da_gas,
+                     instr_spec_sel_op_fee_per_l2_gas,
+                     instr_spec_sel_op_get_contract_instance,
+                     instr_spec_sel_op_halt,
+                     instr_spec_sel_op_internal_call,
+                     instr_spec_sel_op_internal_return,
+                     instr_spec_sel_op_jump,
+                     instr_spec_sel_op_jumpi,
+                     instr_spec_sel_op_keccak,
+                     instr_spec_sel_op_l1_to_l2_msg_exists,
+                     instr_spec_sel_op_l2gasleft,
+                     instr_spec_sel_op_lt,
+                     instr_spec_sel_op_lte,
+                     instr_spec_sel_op_mov,
+                     instr_spec_sel_op_mul,
+                     instr_spec_sel_op_not,
+                     instr_spec_sel_op_note_hash_exists,
+                     instr_spec_sel_op_nullifier_exists,
+                     instr_spec_sel_op_or,
+                     instr_spec_sel_op_pedersen,
+                     instr_spec_sel_op_poseidon2,
+                     instr_spec_sel_op_radix_le,
+                     instr_spec_sel_op_sender,
+                     instr_spec_sel_op_sha256,
+                     instr_spec_sel_op_shl,
+                     instr_spec_sel_op_shr,
+                     instr_spec_sel_op_sload,
+                     instr_spec_sel_op_sstore,
+                     instr_spec_sel_op_storage_address,
+                     instr_spec_sel_op_sub,
+                     instr_spec_sel_op_timestamp,
+                     instr_spec_sel_op_transaction_fee,
+                     instr_spec_sel_op_version,
+                     instr_spec_sel_op_xor,
+                     instr_spec_sel_resolve_ind_addr_a,
+                     instr_spec_sel_resolve_ind_addr_b,
+                     instr_spec_sel_resolve_ind_addr_c,
+                     instr_spec_sel_resolve_ind_addr_d,
                      keccakf1600_clk,
                      keccakf1600_input,
                      keccakf1600_output,
@@ -1794,6 +2128,8 @@ class AvmFlavor {
                      range_check_l2_gas_lo,
                      range_check_da_gas_hi,
                      range_check_da_gas_lo,
+                     lookup_instruction_spec,
+                     lookup_control_flow,
                      kernel_output_lookup,
                      lookup_into_kernel,
                      incl_main_tag_err,
@@ -1835,6 +2171,8 @@ class AvmFlavor {
                      range_check_l2_gas_lo_counts,
                      range_check_da_gas_hi_counts,
                      range_check_da_gas_lo_counts,
+                     lookup_instruction_spec_counts,
+                     lookup_control_flow_counts,
                      kernel_output_lookup_counts,
                      lookup_into_kernel_counts,
                      incl_main_tag_err_counts,
@@ -1939,6 +2277,7 @@ class AvmFlavor {
         {
             return { main_clk,
                      main_sel_first,
+                     main_sel_not_first,
                      alu_a_hi,
                      alu_a_lo,
                      alu_b_hi,
@@ -2047,9 +2386,87 @@ class AvmFlavor {
                      conversion_num_limbs,
                      conversion_radix,
                      conversion_sel_to_radix_le,
-                     gas_da_gas_fixed_table,
-                     gas_l2_gas_fixed_table,
-                     gas_sel_gas_cost,
+                     instr_decomp_indirect,
+                     instr_decomp_o1,
+                     instr_decomp_o2,
+                     instr_decomp_o3,
+                     instr_decomp_o4,
+                     instr_decomp_o5,
+                     instr_decomp_o6,
+                     instr_decomp_o7,
+                     instr_decomp_o8,
+                     instr_decomp_opcode_val,
+                     instr_decomp_sel_decomposition,
+                     instr_spec_da_gas_op_cost,
+                     instr_spec_l2_gas_op_cost,
+                     instr_spec_rwa,
+                     instr_spec_rwb,
+                     instr_spec_rwc,
+                     instr_spec_rwd,
+                     instr_spec_sel_alu,
+                     instr_spec_sel_bin,
+                     instr_spec_sel_instr_spec,
+                     instr_spec_sel_mem_op_a,
+                     instr_spec_sel_mem_op_b,
+                     instr_spec_sel_mem_op_c,
+                     instr_spec_sel_mem_op_d,
+                     instr_spec_sel_mov_ia_to_ic,
+                     instr_spec_sel_mov_ib_to_ic,
+                     instr_spec_sel_op_add,
+                     instr_spec_sel_op_address,
+                     instr_spec_sel_op_and,
+                     instr_spec_sel_op_block_number,
+                     instr_spec_sel_op_cast,
+                     instr_spec_sel_op_chain_id,
+                     instr_spec_sel_op_cmov,
+                     instr_spec_sel_op_coinbase,
+                     instr_spec_sel_op_dagasleft,
+                     instr_spec_sel_op_div,
+                     instr_spec_sel_op_emit_l2_to_l1_msg,
+                     instr_spec_sel_op_emit_note_hash,
+                     instr_spec_sel_op_emit_nullifier,
+                     instr_spec_sel_op_emit_unencrypted_log,
+                     instr_spec_sel_op_eq,
+                     instr_spec_sel_op_external_call,
+                     instr_spec_sel_op_fdiv,
+                     instr_spec_sel_op_fee_per_da_gas,
+                     instr_spec_sel_op_fee_per_l2_gas,
+                     instr_spec_sel_op_get_contract_instance,
+                     instr_spec_sel_op_halt,
+                     instr_spec_sel_op_internal_call,
+                     instr_spec_sel_op_internal_return,
+                     instr_spec_sel_op_jump,
+                     instr_spec_sel_op_jumpi,
+                     instr_spec_sel_op_keccak,
+                     instr_spec_sel_op_l1_to_l2_msg_exists,
+                     instr_spec_sel_op_l2gasleft,
+                     instr_spec_sel_op_lt,
+                     instr_spec_sel_op_lte,
+                     instr_spec_sel_op_mov,
+                     instr_spec_sel_op_mul,
+                     instr_spec_sel_op_not,
+                     instr_spec_sel_op_note_hash_exists,
+                     instr_spec_sel_op_nullifier_exists,
+                     instr_spec_sel_op_or,
+                     instr_spec_sel_op_pedersen,
+                     instr_spec_sel_op_poseidon2,
+                     instr_spec_sel_op_radix_le,
+                     instr_spec_sel_op_sender,
+                     instr_spec_sel_op_sha256,
+                     instr_spec_sel_op_shl,
+                     instr_spec_sel_op_shr,
+                     instr_spec_sel_op_sload,
+                     instr_spec_sel_op_sstore,
+                     instr_spec_sel_op_storage_address,
+                     instr_spec_sel_op_sub,
+                     instr_spec_sel_op_timestamp,
+                     instr_spec_sel_op_transaction_fee,
+                     instr_spec_sel_op_version,
+                     instr_spec_sel_op_xor,
+                     instr_spec_sel_resolve_ind_addr_a,
+                     instr_spec_sel_resolve_ind_addr_b,
+                     instr_spec_sel_resolve_ind_addr_c,
+                     instr_spec_sel_resolve_ind_addr_d,
                      keccakf1600_clk,
                      keccakf1600_input,
                      keccakf1600_output,
@@ -2247,6 +2664,8 @@ class AvmFlavor {
                      range_check_l2_gas_lo,
                      range_check_da_gas_hi,
                      range_check_da_gas_lo,
+                     lookup_instruction_spec,
+                     lookup_control_flow,
                      kernel_output_lookup,
                      lookup_into_kernel,
                      incl_main_tag_err,
@@ -2288,6 +2707,8 @@ class AvmFlavor {
                      range_check_l2_gas_lo_counts,
                      range_check_da_gas_hi_counts,
                      range_check_da_gas_lo_counts,
+                     lookup_instruction_spec_counts,
+                     lookup_control_flow_counts,
                      kernel_output_lookup_counts,
                      lookup_into_kernel_counts,
                      incl_main_tag_err_counts,
@@ -2582,6 +3003,10 @@ class AvmFlavor {
                 prover_polynomials, relation_parameters, this->circuit_size);
             bb::compute_logderivative_inverse<AvmFlavor, range_check_da_gas_lo_relation<FF>>(
                 prover_polynomials, relation_parameters, this->circuit_size);
+            bb::compute_logderivative_inverse<AvmFlavor, lookup_instruction_spec_relation<FF>>(
+                prover_polynomials, relation_parameters, this->circuit_size);
+            bb::compute_logderivative_inverse<AvmFlavor, lookup_control_flow_relation<FF>>(
+                prover_polynomials, relation_parameters, this->circuit_size);
             bb::compute_logderivative_inverse<AvmFlavor, kernel_output_lookup_relation<FF>>(
                 prover_polynomials, relation_parameters, this->circuit_size);
             bb::compute_logderivative_inverse<AvmFlavor, lookup_into_kernel_relation<FF>>(
@@ -2748,6 +3173,7 @@ class AvmFlavor {
         {
             Base::main_clk = "MAIN_CLK";
             Base::main_sel_first = "MAIN_SEL_FIRST";
+            Base::main_sel_not_first = "MAIN_SEL_NOT_FIRST";
             Base::alu_a_hi = "ALU_A_HI";
             Base::alu_a_lo = "ALU_A_LO";
             Base::alu_b_hi = "ALU_B_HI";
@@ -2856,9 +3282,87 @@ class AvmFlavor {
             Base::conversion_num_limbs = "CONVERSION_NUM_LIMBS";
             Base::conversion_radix = "CONVERSION_RADIX";
             Base::conversion_sel_to_radix_le = "CONVERSION_SEL_TO_RADIX_LE";
-            Base::gas_da_gas_fixed_table = "GAS_DA_GAS_FIXED_TABLE";
-            Base::gas_l2_gas_fixed_table = "GAS_L2_GAS_FIXED_TABLE";
-            Base::gas_sel_gas_cost = "GAS_SEL_GAS_COST";
+            Base::instr_decomp_indirect = "INSTR_DECOMP_INDIRECT";
+            Base::instr_decomp_o1 = "INSTR_DECOMP_O1";
+            Base::instr_decomp_o2 = "INSTR_DECOMP_O2";
+            Base::instr_decomp_o3 = "INSTR_DECOMP_O3";
+            Base::instr_decomp_o4 = "INSTR_DECOMP_O4";
+            Base::instr_decomp_o5 = "INSTR_DECOMP_O5";
+            Base::instr_decomp_o6 = "INSTR_DECOMP_O6";
+            Base::instr_decomp_o7 = "INSTR_DECOMP_O7";
+            Base::instr_decomp_o8 = "INSTR_DECOMP_O8";
+            Base::instr_decomp_opcode_val = "INSTR_DECOMP_OPCODE_VAL";
+            Base::instr_decomp_sel_decomposition = "INSTR_DECOMP_SEL_DECOMPOSITION";
+            Base::instr_spec_da_gas_op_cost = "INSTR_SPEC_DA_GAS_OP_COST";
+            Base::instr_spec_l2_gas_op_cost = "INSTR_SPEC_L2_GAS_OP_COST";
+            Base::instr_spec_rwa = "INSTR_SPEC_RWA";
+            Base::instr_spec_rwb = "INSTR_SPEC_RWB";
+            Base::instr_spec_rwc = "INSTR_SPEC_RWC";
+            Base::instr_spec_rwd = "INSTR_SPEC_RWD";
+            Base::instr_spec_sel_alu = "INSTR_SPEC_SEL_ALU";
+            Base::instr_spec_sel_bin = "INSTR_SPEC_SEL_BIN";
+            Base::instr_spec_sel_instr_spec = "INSTR_SPEC_SEL_INSTR_SPEC";
+            Base::instr_spec_sel_mem_op_a = "INSTR_SPEC_SEL_MEM_OP_A";
+            Base::instr_spec_sel_mem_op_b = "INSTR_SPEC_SEL_MEM_OP_B";
+            Base::instr_spec_sel_mem_op_c = "INSTR_SPEC_SEL_MEM_OP_C";
+            Base::instr_spec_sel_mem_op_d = "INSTR_SPEC_SEL_MEM_OP_D";
+            Base::instr_spec_sel_mov_ia_to_ic = "INSTR_SPEC_SEL_MOV_IA_TO_IC";
+            Base::instr_spec_sel_mov_ib_to_ic = "INSTR_SPEC_SEL_MOV_IB_TO_IC";
+            Base::instr_spec_sel_op_add = "INSTR_SPEC_SEL_OP_ADD";
+            Base::instr_spec_sel_op_address = "INSTR_SPEC_SEL_OP_ADDRESS";
+            Base::instr_spec_sel_op_and = "INSTR_SPEC_SEL_OP_AND";
+            Base::instr_spec_sel_op_block_number = "INSTR_SPEC_SEL_OP_BLOCK_NUMBER";
+            Base::instr_spec_sel_op_cast = "INSTR_SPEC_SEL_OP_CAST";
+            Base::instr_spec_sel_op_chain_id = "INSTR_SPEC_SEL_OP_CHAIN_ID";
+            Base::instr_spec_sel_op_cmov = "INSTR_SPEC_SEL_OP_CMOV";
+            Base::instr_spec_sel_op_coinbase = "INSTR_SPEC_SEL_OP_COINBASE";
+            Base::instr_spec_sel_op_dagasleft = "INSTR_SPEC_SEL_OP_DAGASLEFT";
+            Base::instr_spec_sel_op_div = "INSTR_SPEC_SEL_OP_DIV";
+            Base::instr_spec_sel_op_emit_l2_to_l1_msg = "INSTR_SPEC_SEL_OP_EMIT_L2_TO_L1_MSG";
+            Base::instr_spec_sel_op_emit_note_hash = "INSTR_SPEC_SEL_OP_EMIT_NOTE_HASH";
+            Base::instr_spec_sel_op_emit_nullifier = "INSTR_SPEC_SEL_OP_EMIT_NULLIFIER";
+            Base::instr_spec_sel_op_emit_unencrypted_log = "INSTR_SPEC_SEL_OP_EMIT_UNENCRYPTED_LOG";
+            Base::instr_spec_sel_op_eq = "INSTR_SPEC_SEL_OP_EQ";
+            Base::instr_spec_sel_op_external_call = "INSTR_SPEC_SEL_OP_EXTERNAL_CALL";
+            Base::instr_spec_sel_op_fdiv = "INSTR_SPEC_SEL_OP_FDIV";
+            Base::instr_spec_sel_op_fee_per_da_gas = "INSTR_SPEC_SEL_OP_FEE_PER_DA_GAS";
+            Base::instr_spec_sel_op_fee_per_l2_gas = "INSTR_SPEC_SEL_OP_FEE_PER_L2_GAS";
+            Base::instr_spec_sel_op_get_contract_instance = "INSTR_SPEC_SEL_OP_GET_CONTRACT_INSTANCE";
+            Base::instr_spec_sel_op_halt = "INSTR_SPEC_SEL_OP_HALT";
+            Base::instr_spec_sel_op_internal_call = "INSTR_SPEC_SEL_OP_INTERNAL_CALL";
+            Base::instr_spec_sel_op_internal_return = "INSTR_SPEC_SEL_OP_INTERNAL_RETURN";
+            Base::instr_spec_sel_op_jump = "INSTR_SPEC_SEL_OP_JUMP";
+            Base::instr_spec_sel_op_jumpi = "INSTR_SPEC_SEL_OP_JUMPI";
+            Base::instr_spec_sel_op_keccak = "INSTR_SPEC_SEL_OP_KECCAK";
+            Base::instr_spec_sel_op_l1_to_l2_msg_exists = "INSTR_SPEC_SEL_OP_L1_TO_L2_MSG_EXISTS";
+            Base::instr_spec_sel_op_l2gasleft = "INSTR_SPEC_SEL_OP_L2GASLEFT";
+            Base::instr_spec_sel_op_lt = "INSTR_SPEC_SEL_OP_LT";
+            Base::instr_spec_sel_op_lte = "INSTR_SPEC_SEL_OP_LTE";
+            Base::instr_spec_sel_op_mov = "INSTR_SPEC_SEL_OP_MOV";
+            Base::instr_spec_sel_op_mul = "INSTR_SPEC_SEL_OP_MUL";
+            Base::instr_spec_sel_op_not = "INSTR_SPEC_SEL_OP_NOT";
+            Base::instr_spec_sel_op_note_hash_exists = "INSTR_SPEC_SEL_OP_NOTE_HASH_EXISTS";
+            Base::instr_spec_sel_op_nullifier_exists = "INSTR_SPEC_SEL_OP_NULLIFIER_EXISTS";
+            Base::instr_spec_sel_op_or = "INSTR_SPEC_SEL_OP_OR";
+            Base::instr_spec_sel_op_pedersen = "INSTR_SPEC_SEL_OP_PEDERSEN";
+            Base::instr_spec_sel_op_poseidon2 = "INSTR_SPEC_SEL_OP_POSEIDON2";
+            Base::instr_spec_sel_op_radix_le = "INSTR_SPEC_SEL_OP_RADIX_LE";
+            Base::instr_spec_sel_op_sender = "INSTR_SPEC_SEL_OP_SENDER";
+            Base::instr_spec_sel_op_sha256 = "INSTR_SPEC_SEL_OP_SHA256";
+            Base::instr_spec_sel_op_shl = "INSTR_SPEC_SEL_OP_SHL";
+            Base::instr_spec_sel_op_shr = "INSTR_SPEC_SEL_OP_SHR";
+            Base::instr_spec_sel_op_sload = "INSTR_SPEC_SEL_OP_SLOAD";
+            Base::instr_spec_sel_op_sstore = "INSTR_SPEC_SEL_OP_SSTORE";
+            Base::instr_spec_sel_op_storage_address = "INSTR_SPEC_SEL_OP_STORAGE_ADDRESS";
+            Base::instr_spec_sel_op_sub = "INSTR_SPEC_SEL_OP_SUB";
+            Base::instr_spec_sel_op_timestamp = "INSTR_SPEC_SEL_OP_TIMESTAMP";
+            Base::instr_spec_sel_op_transaction_fee = "INSTR_SPEC_SEL_OP_TRANSACTION_FEE";
+            Base::instr_spec_sel_op_version = "INSTR_SPEC_SEL_OP_VERSION";
+            Base::instr_spec_sel_op_xor = "INSTR_SPEC_SEL_OP_XOR";
+            Base::instr_spec_sel_resolve_ind_addr_a = "INSTR_SPEC_SEL_RESOLVE_IND_ADDR_A";
+            Base::instr_spec_sel_resolve_ind_addr_b = "INSTR_SPEC_SEL_RESOLVE_IND_ADDR_B";
+            Base::instr_spec_sel_resolve_ind_addr_c = "INSTR_SPEC_SEL_RESOLVE_IND_ADDR_C";
+            Base::instr_spec_sel_resolve_ind_addr_d = "INSTR_SPEC_SEL_RESOLVE_IND_ADDR_D";
             Base::keccakf1600_clk = "KECCAKF1600_CLK";
             Base::keccakf1600_input = "KECCAKF1600_INPUT";
             Base::keccakf1600_output = "KECCAKF1600_OUTPUT";
@@ -3056,6 +3560,8 @@ class AvmFlavor {
             Base::range_check_l2_gas_lo = "RANGE_CHECK_L2_GAS_LO";
             Base::range_check_da_gas_hi = "RANGE_CHECK_DA_GAS_HI";
             Base::range_check_da_gas_lo = "RANGE_CHECK_DA_GAS_LO";
+            Base::lookup_instruction_spec = "LOOKUP_INSTRUCTION_SPEC";
+            Base::lookup_control_flow = "LOOKUP_CONTROL_FLOW";
             Base::kernel_output_lookup = "KERNEL_OUTPUT_LOOKUP";
             Base::lookup_into_kernel = "LOOKUP_INTO_KERNEL";
             Base::incl_main_tag_err = "INCL_MAIN_TAG_ERR";
@@ -3097,6 +3603,8 @@ class AvmFlavor {
             Base::range_check_l2_gas_lo_counts = "RANGE_CHECK_L2_GAS_LO_COUNTS";
             Base::range_check_da_gas_hi_counts = "RANGE_CHECK_DA_GAS_HI_COUNTS";
             Base::range_check_da_gas_lo_counts = "RANGE_CHECK_DA_GAS_LO_COUNTS";
+            Base::lookup_instruction_spec_counts = "LOOKUP_INSTRUCTION_SPEC_COUNTS";
+            Base::lookup_control_flow_counts = "LOOKUP_CONTROL_FLOW_COUNTS";
             Base::kernel_output_lookup_counts = "KERNEL_OUTPUT_LOOKUP_COUNTS";
             Base::lookup_into_kernel_counts = "LOOKUP_INTO_KERNEL_COUNTS";
             Base::incl_main_tag_err_counts = "INCL_MAIN_TAG_ERR_COUNTS";
@@ -3143,6 +3651,7 @@ class AvmFlavor {
         {
             main_clk = verification_key->main_clk;
             main_sel_first = verification_key->main_sel_first;
+            main_sel_not_first = verification_key->main_sel_not_first;
         }
     };
 
@@ -3258,9 +3767,87 @@ class AvmFlavor {
         Commitment conversion_num_limbs;
         Commitment conversion_radix;
         Commitment conversion_sel_to_radix_le;
-        Commitment gas_da_gas_fixed_table;
-        Commitment gas_l2_gas_fixed_table;
-        Commitment gas_sel_gas_cost;
+        Commitment instr_decomp_indirect;
+        Commitment instr_decomp_o1;
+        Commitment instr_decomp_o2;
+        Commitment instr_decomp_o3;
+        Commitment instr_decomp_o4;
+        Commitment instr_decomp_o5;
+        Commitment instr_decomp_o6;
+        Commitment instr_decomp_o7;
+        Commitment instr_decomp_o8;
+        Commitment instr_decomp_opcode_val;
+        Commitment instr_decomp_sel_decomposition;
+        Commitment instr_spec_da_gas_op_cost;
+        Commitment instr_spec_l2_gas_op_cost;
+        Commitment instr_spec_rwa;
+        Commitment instr_spec_rwb;
+        Commitment instr_spec_rwc;
+        Commitment instr_spec_rwd;
+        Commitment instr_spec_sel_alu;
+        Commitment instr_spec_sel_bin;
+        Commitment instr_spec_sel_instr_spec;
+        Commitment instr_spec_sel_mem_op_a;
+        Commitment instr_spec_sel_mem_op_b;
+        Commitment instr_spec_sel_mem_op_c;
+        Commitment instr_spec_sel_mem_op_d;
+        Commitment instr_spec_sel_mov_ia_to_ic;
+        Commitment instr_spec_sel_mov_ib_to_ic;
+        Commitment instr_spec_sel_op_add;
+        Commitment instr_spec_sel_op_address;
+        Commitment instr_spec_sel_op_and;
+        Commitment instr_spec_sel_op_block_number;
+        Commitment instr_spec_sel_op_cast;
+        Commitment instr_spec_sel_op_chain_id;
+        Commitment instr_spec_sel_op_cmov;
+        Commitment instr_spec_sel_op_coinbase;
+        Commitment instr_spec_sel_op_dagasleft;
+        Commitment instr_spec_sel_op_div;
+        Commitment instr_spec_sel_op_emit_l2_to_l1_msg;
+        Commitment instr_spec_sel_op_emit_note_hash;
+        Commitment instr_spec_sel_op_emit_nullifier;
+        Commitment instr_spec_sel_op_emit_unencrypted_log;
+        Commitment instr_spec_sel_op_eq;
+        Commitment instr_spec_sel_op_external_call;
+        Commitment instr_spec_sel_op_fdiv;
+        Commitment instr_spec_sel_op_fee_per_da_gas;
+        Commitment instr_spec_sel_op_fee_per_l2_gas;
+        Commitment instr_spec_sel_op_get_contract_instance;
+        Commitment instr_spec_sel_op_halt;
+        Commitment instr_spec_sel_op_internal_call;
+        Commitment instr_spec_sel_op_internal_return;
+        Commitment instr_spec_sel_op_jump;
+        Commitment instr_spec_sel_op_jumpi;
+        Commitment instr_spec_sel_op_keccak;
+        Commitment instr_spec_sel_op_l1_to_l2_msg_exists;
+        Commitment instr_spec_sel_op_l2gasleft;
+        Commitment instr_spec_sel_op_lt;
+        Commitment instr_spec_sel_op_lte;
+        Commitment instr_spec_sel_op_mov;
+        Commitment instr_spec_sel_op_mul;
+        Commitment instr_spec_sel_op_not;
+        Commitment instr_spec_sel_op_note_hash_exists;
+        Commitment instr_spec_sel_op_nullifier_exists;
+        Commitment instr_spec_sel_op_or;
+        Commitment instr_spec_sel_op_pedersen;
+        Commitment instr_spec_sel_op_poseidon2;
+        Commitment instr_spec_sel_op_radix_le;
+        Commitment instr_spec_sel_op_sender;
+        Commitment instr_spec_sel_op_sha256;
+        Commitment instr_spec_sel_op_shl;
+        Commitment instr_spec_sel_op_shr;
+        Commitment instr_spec_sel_op_sload;
+        Commitment instr_spec_sel_op_sstore;
+        Commitment instr_spec_sel_op_storage_address;
+        Commitment instr_spec_sel_op_sub;
+        Commitment instr_spec_sel_op_timestamp;
+        Commitment instr_spec_sel_op_transaction_fee;
+        Commitment instr_spec_sel_op_version;
+        Commitment instr_spec_sel_op_xor;
+        Commitment instr_spec_sel_resolve_ind_addr_a;
+        Commitment instr_spec_sel_resolve_ind_addr_b;
+        Commitment instr_spec_sel_resolve_ind_addr_c;
+        Commitment instr_spec_sel_resolve_ind_addr_d;
         Commitment keccakf1600_clk;
         Commitment keccakf1600_input;
         Commitment keccakf1600_output;
@@ -3458,6 +4045,8 @@ class AvmFlavor {
         Commitment range_check_l2_gas_lo;
         Commitment range_check_da_gas_hi;
         Commitment range_check_da_gas_lo;
+        Commitment lookup_instruction_spec;
+        Commitment lookup_control_flow;
         Commitment kernel_output_lookup;
         Commitment lookup_into_kernel;
         Commitment incl_main_tag_err;
@@ -3499,6 +4088,8 @@ class AvmFlavor {
         Commitment range_check_l2_gas_lo_counts;
         Commitment range_check_da_gas_hi_counts;
         Commitment range_check_da_gas_lo_counts;
+        Commitment lookup_instruction_spec_counts;
+        Commitment lookup_control_flow_counts;
         Commitment kernel_output_lookup_counts;
         Commitment lookup_into_kernel_counts;
         Commitment incl_main_tag_err_counts;
@@ -3660,9 +4251,104 @@ class AvmFlavor {
             conversion_num_limbs = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             conversion_radix = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             conversion_sel_to_radix_le = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
-            gas_da_gas_fixed_table = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
-            gas_l2_gas_fixed_table = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
-            gas_sel_gas_cost = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_decomp_indirect = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_decomp_o1 = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_decomp_o2 = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_decomp_o3 = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_decomp_o4 = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_decomp_o5 = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_decomp_o6 = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_decomp_o7 = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_decomp_o8 = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_decomp_opcode_val = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_decomp_sel_decomposition = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_da_gas_op_cost = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_l2_gas_op_cost = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_rwa = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_rwb = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_rwc = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_rwd = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_alu = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_bin = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_instr_spec = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_mem_op_a = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_mem_op_b = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_mem_op_c = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_mem_op_d = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_mov_ia_to_ic = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_mov_ib_to_ic = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_add = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_address = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_and = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_block_number = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_cast = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_chain_id = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_cmov = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_coinbase = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_dagasleft = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_div = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_emit_l2_to_l1_msg =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_emit_note_hash =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_emit_nullifier =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_emit_unencrypted_log =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_eq = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_external_call = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_fdiv = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_fee_per_da_gas =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_fee_per_l2_gas =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_get_contract_instance =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_halt = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_internal_call = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_internal_return =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_jump = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_jumpi = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_keccak = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_l1_to_l2_msg_exists =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_l2gasleft = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_lt = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_lte = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_mov = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_mul = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_not = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_note_hash_exists =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_nullifier_exists =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_or = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_pedersen = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_poseidon2 = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_radix_le = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_sender = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_sha256 = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_shl = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_shr = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_sload = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_sstore = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_storage_address =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_sub = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_timestamp = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_transaction_fee =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_version = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_op_xor = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_resolve_ind_addr_a =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_resolve_ind_addr_b =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_resolve_ind_addr_c =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            instr_spec_sel_resolve_ind_addr_d =
+                deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             keccakf1600_clk = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             keccakf1600_input = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             keccakf1600_output = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
@@ -3872,6 +4558,8 @@ class AvmFlavor {
             range_check_l2_gas_lo = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             range_check_da_gas_hi = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             range_check_da_gas_lo = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            lookup_instruction_spec = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            lookup_control_flow = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             kernel_output_lookup = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             lookup_into_kernel = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             incl_main_tag_err = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
@@ -3913,6 +4601,8 @@ class AvmFlavor {
             range_check_l2_gas_lo_counts = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             range_check_da_gas_hi_counts = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             range_check_da_gas_lo_counts = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            lookup_instruction_spec_counts = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
+            lookup_control_flow_counts = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             kernel_output_lookup_counts = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             lookup_into_kernel_counts = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
             incl_main_tag_err_counts = deserialize_from_buffer<Commitment>(Transcript::proof_data, num_frs_read);
@@ -4078,9 +4768,87 @@ class AvmFlavor {
             serialize_to_buffer<Commitment>(conversion_num_limbs, Transcript::proof_data);
             serialize_to_buffer<Commitment>(conversion_radix, Transcript::proof_data);
             serialize_to_buffer<Commitment>(conversion_sel_to_radix_le, Transcript::proof_data);
-            serialize_to_buffer<Commitment>(gas_da_gas_fixed_table, Transcript::proof_data);
-            serialize_to_buffer<Commitment>(gas_l2_gas_fixed_table, Transcript::proof_data);
-            serialize_to_buffer<Commitment>(gas_sel_gas_cost, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_decomp_indirect, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_decomp_o1, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_decomp_o2, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_decomp_o3, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_decomp_o4, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_decomp_o5, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_decomp_o6, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_decomp_o7, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_decomp_o8, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_decomp_opcode_val, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_decomp_sel_decomposition, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_da_gas_op_cost, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_l2_gas_op_cost, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_rwa, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_rwb, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_rwc, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_rwd, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_alu, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_bin, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_instr_spec, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_mem_op_a, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_mem_op_b, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_mem_op_c, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_mem_op_d, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_mov_ia_to_ic, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_mov_ib_to_ic, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_add, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_address, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_and, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_block_number, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_cast, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_chain_id, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_cmov, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_coinbase, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_dagasleft, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_div, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_emit_l2_to_l1_msg, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_emit_note_hash, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_emit_nullifier, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_emit_unencrypted_log, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_eq, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_external_call, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_fdiv, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_fee_per_da_gas, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_fee_per_l2_gas, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_get_contract_instance, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_halt, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_internal_call, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_internal_return, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_jump, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_jumpi, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_keccak, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_l1_to_l2_msg_exists, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_l2gasleft, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_lt, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_lte, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_mov, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_mul, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_not, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_note_hash_exists, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_nullifier_exists, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_or, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_pedersen, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_poseidon2, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_radix_le, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_sender, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_sha256, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_shl, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_shr, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_sload, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_sstore, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_storage_address, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_sub, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_timestamp, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_transaction_fee, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_version, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_op_xor, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_resolve_ind_addr_a, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_resolve_ind_addr_b, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_resolve_ind_addr_c, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(instr_spec_sel_resolve_ind_addr_d, Transcript::proof_data);
             serialize_to_buffer<Commitment>(keccakf1600_clk, Transcript::proof_data);
             serialize_to_buffer<Commitment>(keccakf1600_input, Transcript::proof_data);
             serialize_to_buffer<Commitment>(keccakf1600_output, Transcript::proof_data);
@@ -4278,6 +5046,8 @@ class AvmFlavor {
             serialize_to_buffer<Commitment>(range_check_l2_gas_lo, Transcript::proof_data);
             serialize_to_buffer<Commitment>(range_check_da_gas_hi, Transcript::proof_data);
             serialize_to_buffer<Commitment>(range_check_da_gas_lo, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(lookup_instruction_spec, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(lookup_control_flow, Transcript::proof_data);
             serialize_to_buffer<Commitment>(kernel_output_lookup, Transcript::proof_data);
             serialize_to_buffer<Commitment>(lookup_into_kernel, Transcript::proof_data);
             serialize_to_buffer<Commitment>(incl_main_tag_err, Transcript::proof_data);
@@ -4319,6 +5089,8 @@ class AvmFlavor {
             serialize_to_buffer<Commitment>(range_check_l2_gas_lo_counts, Transcript::proof_data);
             serialize_to_buffer<Commitment>(range_check_da_gas_hi_counts, Transcript::proof_data);
             serialize_to_buffer<Commitment>(range_check_da_gas_lo_counts, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(lookup_instruction_spec_counts, Transcript::proof_data);
+            serialize_to_buffer<Commitment>(lookup_control_flow_counts, Transcript::proof_data);
             serialize_to_buffer<Commitment>(kernel_output_lookup_counts, Transcript::proof_data);
             serialize_to_buffer<Commitment>(lookup_into_kernel_counts, Transcript::proof_data);
             serialize_to_buffer<Commitment>(incl_main_tag_err_counts, Transcript::proof_data);

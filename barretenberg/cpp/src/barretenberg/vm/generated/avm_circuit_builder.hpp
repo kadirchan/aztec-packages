@@ -21,11 +21,13 @@
 #include "barretenberg/relations/generated/avm/conversion.hpp"
 #include "barretenberg/relations/generated/avm/incl_main_tag_err.hpp"
 #include "barretenberg/relations/generated/avm/incl_mem_tag_err.hpp"
+#include "barretenberg/relations/generated/avm/instr_spec.hpp"
 #include "barretenberg/relations/generated/avm/keccakf1600.hpp"
 #include "barretenberg/relations/generated/avm/kernel.hpp"
 #include "barretenberg/relations/generated/avm/kernel_output_lookup.hpp"
 #include "barretenberg/relations/generated/avm/lookup_byte_lengths.hpp"
 #include "barretenberg/relations/generated/avm/lookup_byte_operations.hpp"
+#include "barretenberg/relations/generated/avm/lookup_control_flow.hpp"
 #include "barretenberg/relations/generated/avm/lookup_div_u16_0.hpp"
 #include "barretenberg/relations/generated/avm/lookup_div_u16_1.hpp"
 #include "barretenberg/relations/generated/avm/lookup_div_u16_2.hpp"
@@ -34,6 +36,7 @@
 #include "barretenberg/relations/generated/avm/lookup_div_u16_5.hpp"
 #include "barretenberg/relations/generated/avm/lookup_div_u16_6.hpp"
 #include "barretenberg/relations/generated/avm/lookup_div_u16_7.hpp"
+#include "barretenberg/relations/generated/avm/lookup_instruction_spec.hpp"
 #include "barretenberg/relations/generated/avm/lookup_into_kernel.hpp"
 #include "barretenberg/relations/generated/avm/lookup_mem_rng_chk_hi.hpp"
 #include "barretenberg/relations/generated/avm/lookup_mem_rng_chk_lo.hpp"
@@ -87,6 +90,7 @@ namespace bb {
 template <typename FF> struct AvmFullRow {
     FF main_clk{};
     FF main_sel_first{};
+    FF main_sel_not_first{};
     FF alu_a_hi{};
     FF alu_a_lo{};
     FF alu_b_hi{};
@@ -195,9 +199,87 @@ template <typename FF> struct AvmFullRow {
     FF conversion_num_limbs{};
     FF conversion_radix{};
     FF conversion_sel_to_radix_le{};
-    FF gas_da_gas_fixed_table{};
-    FF gas_l2_gas_fixed_table{};
-    FF gas_sel_gas_cost{};
+    FF instr_decomp_indirect{};
+    FF instr_decomp_o1{};
+    FF instr_decomp_o2{};
+    FF instr_decomp_o3{};
+    FF instr_decomp_o4{};
+    FF instr_decomp_o5{};
+    FF instr_decomp_o6{};
+    FF instr_decomp_o7{};
+    FF instr_decomp_o8{};
+    FF instr_decomp_opcode_val{};
+    FF instr_decomp_sel_decomposition{};
+    FF instr_spec_da_gas_op_cost{};
+    FF instr_spec_l2_gas_op_cost{};
+    FF instr_spec_rwa{};
+    FF instr_spec_rwb{};
+    FF instr_spec_rwc{};
+    FF instr_spec_rwd{};
+    FF instr_spec_sel_alu{};
+    FF instr_spec_sel_bin{};
+    FF instr_spec_sel_instr_spec{};
+    FF instr_spec_sel_mem_op_a{};
+    FF instr_spec_sel_mem_op_b{};
+    FF instr_spec_sel_mem_op_c{};
+    FF instr_spec_sel_mem_op_d{};
+    FF instr_spec_sel_mov_ia_to_ic{};
+    FF instr_spec_sel_mov_ib_to_ic{};
+    FF instr_spec_sel_op_add{};
+    FF instr_spec_sel_op_address{};
+    FF instr_spec_sel_op_and{};
+    FF instr_spec_sel_op_block_number{};
+    FF instr_spec_sel_op_cast{};
+    FF instr_spec_sel_op_chain_id{};
+    FF instr_spec_sel_op_cmov{};
+    FF instr_spec_sel_op_coinbase{};
+    FF instr_spec_sel_op_dagasleft{};
+    FF instr_spec_sel_op_div{};
+    FF instr_spec_sel_op_emit_l2_to_l1_msg{};
+    FF instr_spec_sel_op_emit_note_hash{};
+    FF instr_spec_sel_op_emit_nullifier{};
+    FF instr_spec_sel_op_emit_unencrypted_log{};
+    FF instr_spec_sel_op_eq{};
+    FF instr_spec_sel_op_external_call{};
+    FF instr_spec_sel_op_fdiv{};
+    FF instr_spec_sel_op_fee_per_da_gas{};
+    FF instr_spec_sel_op_fee_per_l2_gas{};
+    FF instr_spec_sel_op_get_contract_instance{};
+    FF instr_spec_sel_op_halt{};
+    FF instr_spec_sel_op_internal_call{};
+    FF instr_spec_sel_op_internal_return{};
+    FF instr_spec_sel_op_jump{};
+    FF instr_spec_sel_op_jumpi{};
+    FF instr_spec_sel_op_keccak{};
+    FF instr_spec_sel_op_l1_to_l2_msg_exists{};
+    FF instr_spec_sel_op_l2gasleft{};
+    FF instr_spec_sel_op_lt{};
+    FF instr_spec_sel_op_lte{};
+    FF instr_spec_sel_op_mov{};
+    FF instr_spec_sel_op_mul{};
+    FF instr_spec_sel_op_not{};
+    FF instr_spec_sel_op_note_hash_exists{};
+    FF instr_spec_sel_op_nullifier_exists{};
+    FF instr_spec_sel_op_or{};
+    FF instr_spec_sel_op_pedersen{};
+    FF instr_spec_sel_op_poseidon2{};
+    FF instr_spec_sel_op_radix_le{};
+    FF instr_spec_sel_op_sender{};
+    FF instr_spec_sel_op_sha256{};
+    FF instr_spec_sel_op_shl{};
+    FF instr_spec_sel_op_shr{};
+    FF instr_spec_sel_op_sload{};
+    FF instr_spec_sel_op_sstore{};
+    FF instr_spec_sel_op_storage_address{};
+    FF instr_spec_sel_op_sub{};
+    FF instr_spec_sel_op_timestamp{};
+    FF instr_spec_sel_op_transaction_fee{};
+    FF instr_spec_sel_op_version{};
+    FF instr_spec_sel_op_xor{};
+    FF instr_spec_sel_resolve_ind_addr_a{};
+    FF instr_spec_sel_resolve_ind_addr_b{};
+    FF instr_spec_sel_resolve_ind_addr_c{};
+    FF instr_spec_sel_resolve_ind_addr_d{};
     FF keccakf1600_clk{};
     FF keccakf1600_input{};
     FF keccakf1600_output{};
@@ -395,6 +477,8 @@ template <typename FF> struct AvmFullRow {
     FF range_check_l2_gas_lo{};
     FF range_check_da_gas_hi{};
     FF range_check_da_gas_lo{};
+    FF lookup_instruction_spec{};
+    FF lookup_control_flow{};
     FF kernel_output_lookup{};
     FF lookup_into_kernel{};
     FF incl_main_tag_err{};
@@ -436,6 +520,8 @@ template <typename FF> struct AvmFullRow {
     FF range_check_l2_gas_lo_counts{};
     FF range_check_da_gas_hi_counts{};
     FF range_check_da_gas_lo_counts{};
+    FF lookup_instruction_spec_counts{};
+    FF lookup_control_flow_counts{};
     FF kernel_output_lookup_counts{};
     FF lookup_into_kernel_counts{};
     FF incl_main_tag_err_counts{};
@@ -551,8 +637,8 @@ class AvmCircuitBuilder {
     using Polynomial = Flavor::Polynomial;
     using ProverPolynomials = Flavor::ProverPolynomials;
 
-    static constexpr size_t num_fixed_columns = 450;
-    static constexpr size_t num_polys = 385;
+    static constexpr size_t num_fixed_columns = 533;
+    static constexpr size_t num_polys = 468;
     std::vector<Row> rows;
 
     void set_trace(std::vector<Row>&& trace) { rows = std::move(trace); }
@@ -570,6 +656,7 @@ class AvmCircuitBuilder {
         for (size_t i = 0; i < rows.size(); i++) {
             polys.main_clk[i] = rows[i].main_clk;
             polys.main_sel_first[i] = rows[i].main_sel_first;
+            polys.main_sel_not_first[i] = rows[i].main_sel_not_first;
             polys.alu_a_hi[i] = rows[i].alu_a_hi;
             polys.alu_a_lo[i] = rows[i].alu_a_lo;
             polys.alu_b_hi[i] = rows[i].alu_b_hi;
@@ -678,9 +765,87 @@ class AvmCircuitBuilder {
             polys.conversion_num_limbs[i] = rows[i].conversion_num_limbs;
             polys.conversion_radix[i] = rows[i].conversion_radix;
             polys.conversion_sel_to_radix_le[i] = rows[i].conversion_sel_to_radix_le;
-            polys.gas_da_gas_fixed_table[i] = rows[i].gas_da_gas_fixed_table;
-            polys.gas_l2_gas_fixed_table[i] = rows[i].gas_l2_gas_fixed_table;
-            polys.gas_sel_gas_cost[i] = rows[i].gas_sel_gas_cost;
+            polys.instr_decomp_indirect[i] = rows[i].instr_decomp_indirect;
+            polys.instr_decomp_o1[i] = rows[i].instr_decomp_o1;
+            polys.instr_decomp_o2[i] = rows[i].instr_decomp_o2;
+            polys.instr_decomp_o3[i] = rows[i].instr_decomp_o3;
+            polys.instr_decomp_o4[i] = rows[i].instr_decomp_o4;
+            polys.instr_decomp_o5[i] = rows[i].instr_decomp_o5;
+            polys.instr_decomp_o6[i] = rows[i].instr_decomp_o6;
+            polys.instr_decomp_o7[i] = rows[i].instr_decomp_o7;
+            polys.instr_decomp_o8[i] = rows[i].instr_decomp_o8;
+            polys.instr_decomp_opcode_val[i] = rows[i].instr_decomp_opcode_val;
+            polys.instr_decomp_sel_decomposition[i] = rows[i].instr_decomp_sel_decomposition;
+            polys.instr_spec_da_gas_op_cost[i] = rows[i].instr_spec_da_gas_op_cost;
+            polys.instr_spec_l2_gas_op_cost[i] = rows[i].instr_spec_l2_gas_op_cost;
+            polys.instr_spec_rwa[i] = rows[i].instr_spec_rwa;
+            polys.instr_spec_rwb[i] = rows[i].instr_spec_rwb;
+            polys.instr_spec_rwc[i] = rows[i].instr_spec_rwc;
+            polys.instr_spec_rwd[i] = rows[i].instr_spec_rwd;
+            polys.instr_spec_sel_alu[i] = rows[i].instr_spec_sel_alu;
+            polys.instr_spec_sel_bin[i] = rows[i].instr_spec_sel_bin;
+            polys.instr_spec_sel_instr_spec[i] = rows[i].instr_spec_sel_instr_spec;
+            polys.instr_spec_sel_mem_op_a[i] = rows[i].instr_spec_sel_mem_op_a;
+            polys.instr_spec_sel_mem_op_b[i] = rows[i].instr_spec_sel_mem_op_b;
+            polys.instr_spec_sel_mem_op_c[i] = rows[i].instr_spec_sel_mem_op_c;
+            polys.instr_spec_sel_mem_op_d[i] = rows[i].instr_spec_sel_mem_op_d;
+            polys.instr_spec_sel_mov_ia_to_ic[i] = rows[i].instr_spec_sel_mov_ia_to_ic;
+            polys.instr_spec_sel_mov_ib_to_ic[i] = rows[i].instr_spec_sel_mov_ib_to_ic;
+            polys.instr_spec_sel_op_add[i] = rows[i].instr_spec_sel_op_add;
+            polys.instr_spec_sel_op_address[i] = rows[i].instr_spec_sel_op_address;
+            polys.instr_spec_sel_op_and[i] = rows[i].instr_spec_sel_op_and;
+            polys.instr_spec_sel_op_block_number[i] = rows[i].instr_spec_sel_op_block_number;
+            polys.instr_spec_sel_op_cast[i] = rows[i].instr_spec_sel_op_cast;
+            polys.instr_spec_sel_op_chain_id[i] = rows[i].instr_spec_sel_op_chain_id;
+            polys.instr_spec_sel_op_cmov[i] = rows[i].instr_spec_sel_op_cmov;
+            polys.instr_spec_sel_op_coinbase[i] = rows[i].instr_spec_sel_op_coinbase;
+            polys.instr_spec_sel_op_dagasleft[i] = rows[i].instr_spec_sel_op_dagasleft;
+            polys.instr_spec_sel_op_div[i] = rows[i].instr_spec_sel_op_div;
+            polys.instr_spec_sel_op_emit_l2_to_l1_msg[i] = rows[i].instr_spec_sel_op_emit_l2_to_l1_msg;
+            polys.instr_spec_sel_op_emit_note_hash[i] = rows[i].instr_spec_sel_op_emit_note_hash;
+            polys.instr_spec_sel_op_emit_nullifier[i] = rows[i].instr_spec_sel_op_emit_nullifier;
+            polys.instr_spec_sel_op_emit_unencrypted_log[i] = rows[i].instr_spec_sel_op_emit_unencrypted_log;
+            polys.instr_spec_sel_op_eq[i] = rows[i].instr_spec_sel_op_eq;
+            polys.instr_spec_sel_op_external_call[i] = rows[i].instr_spec_sel_op_external_call;
+            polys.instr_spec_sel_op_fdiv[i] = rows[i].instr_spec_sel_op_fdiv;
+            polys.instr_spec_sel_op_fee_per_da_gas[i] = rows[i].instr_spec_sel_op_fee_per_da_gas;
+            polys.instr_spec_sel_op_fee_per_l2_gas[i] = rows[i].instr_spec_sel_op_fee_per_l2_gas;
+            polys.instr_spec_sel_op_get_contract_instance[i] = rows[i].instr_spec_sel_op_get_contract_instance;
+            polys.instr_spec_sel_op_halt[i] = rows[i].instr_spec_sel_op_halt;
+            polys.instr_spec_sel_op_internal_call[i] = rows[i].instr_spec_sel_op_internal_call;
+            polys.instr_spec_sel_op_internal_return[i] = rows[i].instr_spec_sel_op_internal_return;
+            polys.instr_spec_sel_op_jump[i] = rows[i].instr_spec_sel_op_jump;
+            polys.instr_spec_sel_op_jumpi[i] = rows[i].instr_spec_sel_op_jumpi;
+            polys.instr_spec_sel_op_keccak[i] = rows[i].instr_spec_sel_op_keccak;
+            polys.instr_spec_sel_op_l1_to_l2_msg_exists[i] = rows[i].instr_spec_sel_op_l1_to_l2_msg_exists;
+            polys.instr_spec_sel_op_l2gasleft[i] = rows[i].instr_spec_sel_op_l2gasleft;
+            polys.instr_spec_sel_op_lt[i] = rows[i].instr_spec_sel_op_lt;
+            polys.instr_spec_sel_op_lte[i] = rows[i].instr_spec_sel_op_lte;
+            polys.instr_spec_sel_op_mov[i] = rows[i].instr_spec_sel_op_mov;
+            polys.instr_spec_sel_op_mul[i] = rows[i].instr_spec_sel_op_mul;
+            polys.instr_spec_sel_op_not[i] = rows[i].instr_spec_sel_op_not;
+            polys.instr_spec_sel_op_note_hash_exists[i] = rows[i].instr_spec_sel_op_note_hash_exists;
+            polys.instr_spec_sel_op_nullifier_exists[i] = rows[i].instr_spec_sel_op_nullifier_exists;
+            polys.instr_spec_sel_op_or[i] = rows[i].instr_spec_sel_op_or;
+            polys.instr_spec_sel_op_pedersen[i] = rows[i].instr_spec_sel_op_pedersen;
+            polys.instr_spec_sel_op_poseidon2[i] = rows[i].instr_spec_sel_op_poseidon2;
+            polys.instr_spec_sel_op_radix_le[i] = rows[i].instr_spec_sel_op_radix_le;
+            polys.instr_spec_sel_op_sender[i] = rows[i].instr_spec_sel_op_sender;
+            polys.instr_spec_sel_op_sha256[i] = rows[i].instr_spec_sel_op_sha256;
+            polys.instr_spec_sel_op_shl[i] = rows[i].instr_spec_sel_op_shl;
+            polys.instr_spec_sel_op_shr[i] = rows[i].instr_spec_sel_op_shr;
+            polys.instr_spec_sel_op_sload[i] = rows[i].instr_spec_sel_op_sload;
+            polys.instr_spec_sel_op_sstore[i] = rows[i].instr_spec_sel_op_sstore;
+            polys.instr_spec_sel_op_storage_address[i] = rows[i].instr_spec_sel_op_storage_address;
+            polys.instr_spec_sel_op_sub[i] = rows[i].instr_spec_sel_op_sub;
+            polys.instr_spec_sel_op_timestamp[i] = rows[i].instr_spec_sel_op_timestamp;
+            polys.instr_spec_sel_op_transaction_fee[i] = rows[i].instr_spec_sel_op_transaction_fee;
+            polys.instr_spec_sel_op_version[i] = rows[i].instr_spec_sel_op_version;
+            polys.instr_spec_sel_op_xor[i] = rows[i].instr_spec_sel_op_xor;
+            polys.instr_spec_sel_resolve_ind_addr_a[i] = rows[i].instr_spec_sel_resolve_ind_addr_a;
+            polys.instr_spec_sel_resolve_ind_addr_b[i] = rows[i].instr_spec_sel_resolve_ind_addr_b;
+            polys.instr_spec_sel_resolve_ind_addr_c[i] = rows[i].instr_spec_sel_resolve_ind_addr_c;
+            polys.instr_spec_sel_resolve_ind_addr_d[i] = rows[i].instr_spec_sel_resolve_ind_addr_d;
             polys.keccakf1600_clk[i] = rows[i].keccakf1600_clk;
             polys.keccakf1600_input[i] = rows[i].keccakf1600_input;
             polys.keccakf1600_output[i] = rows[i].keccakf1600_output;
@@ -866,6 +1031,8 @@ class AvmCircuitBuilder {
             polys.range_check_l2_gas_lo_counts[i] = rows[i].range_check_l2_gas_lo_counts;
             polys.range_check_da_gas_hi_counts[i] = rows[i].range_check_da_gas_hi_counts;
             polys.range_check_da_gas_lo_counts[i] = rows[i].range_check_da_gas_lo_counts;
+            polys.lookup_instruction_spec_counts[i] = rows[i].lookup_instruction_spec_counts;
+            polys.lookup_control_flow_counts[i] = rows[i].lookup_control_flow_counts;
             polys.kernel_output_lookup_counts[i] = rows[i].kernel_output_lookup_counts;
             polys.lookup_into_kernel_counts[i] = rows[i].lookup_into_kernel_counts;
             polys.incl_main_tag_err_counts[i] = rows[i].incl_main_tag_err_counts;
@@ -1058,6 +1225,11 @@ class AvmCircuitBuilder {
                                                                                  Avm_vm::get_relation_label_conversion);
         };
 
+        auto instr_spec = [=]() {
+            return evaluate_relation.template operator()<Avm_vm::instr_spec<FF>>("instr_spec",
+                                                                                 Avm_vm::get_relation_label_instr_spec);
+        };
+
         auto keccakf1600 = [=]() {
             return evaluate_relation.template operator()<Avm_vm::keccakf1600<FF>>(
                 "keccakf1600", Avm_vm::get_relation_label_keccakf1600);
@@ -1178,6 +1350,15 @@ class AvmCircuitBuilder {
         auto range_check_da_gas_lo = [=]() {
             return evaluate_logderivative.template operator()<range_check_da_gas_lo_relation<FF>>(
                 "RANGE_CHECK_DA_GAS_LO");
+        };
+
+        auto lookup_instruction_spec = [=]() {
+            return evaluate_logderivative.template operator()<lookup_instruction_spec_relation<FF>>(
+                "LOOKUP_INSTRUCTION_SPEC");
+        };
+
+        auto lookup_control_flow = [=]() {
+            return evaluate_logderivative.template operator()<lookup_control_flow_relation<FF>>("LOOKUP_CONTROL_FLOW");
         };
 
         auto kernel_output_lookup = [=]() {
@@ -1331,6 +1512,8 @@ class AvmCircuitBuilder {
 
         relation_futures.emplace_back(std::async(std::launch::async, conversion));
 
+        relation_futures.emplace_back(std::async(std::launch::async, instr_spec));
+
         relation_futures.emplace_back(std::async(std::launch::async, keccakf1600));
 
         relation_futures.emplace_back(std::async(std::launch::async, kernel));
@@ -1384,6 +1567,10 @@ class AvmCircuitBuilder {
         relation_futures.emplace_back(std::async(std::launch::async, range_check_da_gas_hi));
 
         relation_futures.emplace_back(std::async(std::launch::async, range_check_da_gas_lo));
+
+        relation_futures.emplace_back(std::async(std::launch::async, lookup_instruction_spec));
+
+        relation_futures.emplace_back(std::async(std::launch::async, lookup_control_flow));
 
         relation_futures.emplace_back(std::async(std::launch::async, kernel_output_lookup));
 
@@ -1468,6 +1655,8 @@ class AvmCircuitBuilder {
 
         conversion();
 
+        instr_spec();
+
         keccakf1600();
 
         kernel();
@@ -1521,6 +1710,10 @@ class AvmCircuitBuilder {
         range_check_da_gas_hi();
 
         range_check_da_gas_lo();
+
+        lookup_instruction_spec();
+
+        lookup_control_flow();
 
         kernel_output_lookup();
 

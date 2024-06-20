@@ -3,7 +3,8 @@ include "alu.pil";
 include "binary.pil";
 include "constants.pil";
 include "kernel.pil";
-include "gas.pil";
+include "instr_spec.pil";
+include "instr_decomp.pil";
 include "gadgets/conversion.pil";
 include "gadgets/sha256.pil";
 include "gadgets/poseidon2.pil";
@@ -15,6 +16,7 @@ namespace main(256);
     pol constant clk(i) { i };
     pol constant sel_first = [1] + [0]*; // Used mostly to toggle off the first row consisting
                                          // only in first element of shifted polynomials.
+    pol constant sel_not_first = [0] + [1]*;
 
     //===== KERNEL INPUTS =========================================================
     // Kernel lookup selector opcodes
@@ -60,7 +62,7 @@ namespace main(256);
     pol commit opcode_val;
 
     //===== GAS ACCOUNTING ========================================================
-    // 1. The gas lookup table (in gas.pil) is constant and maps the opcode value to L2/DA gas (fixed) cost.
+    // 1. The gas lookup table (in instr_spec.pil) is constant and maps the opcode value to L2/DA gas (fixed) cost.
     // 2. Read gas_op from gas table based on the opcode value
     // 3. TODO(#6588): constrain gas start and gas end
 
@@ -113,7 +115,7 @@ namespace main(256);
     #[LOOKUP_OPCODE_GAS]
     sel_gas_accounting_active {opcode_val, l2_gas_op_cost, da_gas_op_cost}
     in
-    gas.sel_gas_cost {clk, gas.l2_gas_fixed_table, gas.da_gas_fixed_table};
+    instr_spec.sel_instr_spec {clk, instr_spec.l2_gas_op_cost, instr_spec.da_gas_op_cost};
 
     #[RANGE_CHECK_L2_GAS_HI]
     sel_gas_accounting_active {abs_l2_rem_gas_hi} in sel_rng_16 {clk};
@@ -186,10 +188,8 @@ namespace main(256);
     pol commit sel_op_shl;
     pol commit sel_op_shr;
 
-    // Helper selector to characterize an ALU chiplet selector
+    // Chiplet selectors.
     pol commit sel_alu;
-
-    // Helper selector to characterize a Binary chiplet selector
     pol commit sel_bin;
 
     // Instruction memory tags read/write (1: u8, 2: u16, 3: u32, 4: u64, 5: u128, 6: field)
@@ -258,90 +258,9 @@ namespace main(256);
     // of size N. As this depends on the supplied bytecode, this polynomial cannot be constant.
     pol commit sel_last;
     
-    // Relations on type constraints
-    // TODO: Very likely, we can remove these constraints as the selectors should be derived during
-    // opcode decomposition.
-    sel_op_sender * (1 - sel_op_sender) = 0;
-    sel_op_address * (1 - sel_op_address) = 0;
-    sel_op_storage_address * (1 - sel_op_storage_address) = 0;
-    sel_op_chain_id * (1 - sel_op_chain_id) = 0;
-    sel_op_version * (1 - sel_op_version) = 0;
-    sel_op_block_number * (1 - sel_op_block_number) = 0;
-    sel_op_coinbase * (1 - sel_op_coinbase) = 0;
-    sel_op_timestamp * (1 - sel_op_timestamp) = 0;
-    sel_op_fee_per_l2_gas * (1 - sel_op_fee_per_l2_gas) = 0;
-    sel_op_fee_per_da_gas * (1 - sel_op_fee_per_da_gas) = 0;
-    sel_op_transaction_fee * (1 - sel_op_transaction_fee) = 0;
-
-    // MACHINE STATE - GAS
-    sel_op_l2gasleft * (1 - sel_op_l2gasleft) = 0;
-    sel_op_dagasleft * (1 - sel_op_dagasleft) = 0;
-
-    sel_op_note_hash_exists * (1 - sel_op_note_hash_exists) = 0;
-    sel_op_emit_note_hash * (1 - sel_op_emit_note_hash) = 0;
-    sel_op_nullifier_exists * (1 - sel_op_nullifier_exists) = 0;
-    sel_op_emit_nullifier * (1 - sel_op_emit_nullifier) = 0;
-    sel_op_l1_to_l2_msg_exists * (1 - sel_op_l1_to_l2_msg_exists) = 0;
-    sel_op_emit_unencrypted_log * (1 - sel_op_emit_unencrypted_log) = 0;
-    sel_op_emit_l2_to_l1_msg * (1 - sel_op_emit_l2_to_l1_msg) = 0;
-    sel_op_get_contract_instance * (1 - sel_op_get_contract_instance) = 0;
-
-    sel_op_sload * (1 - sel_op_sload) = 0;
-    sel_op_sstore * (1 - sel_op_sstore) = 0;
-
-    sel_op_radix_le * (1 - sel_op_radix_le) = 0;
-    sel_op_sha256 * (1 - sel_op_sha256) = 0;
-    sel_op_poseidon2 * (1 - sel_op_poseidon2) = 0;
-    sel_op_keccak * (1 - sel_op_keccak) = 0;
-    sel_op_pedersen * (1 - sel_op_pedersen) = 0;
-
-    sel_op_add * (1 - sel_op_add) = 0;
-    sel_op_sub * (1 - sel_op_sub) = 0;
-    sel_op_mul * (1 - sel_op_mul) = 0;
-    sel_op_div * (1 - sel_op_div) = 0;
-    sel_op_fdiv * (1 - sel_op_fdiv) = 0;
-    sel_op_not * (1 - sel_op_not) = 0;
-    sel_op_eq * (1 - sel_op_eq) = 0;
-    sel_op_and * (1 - sel_op_and) = 0;
-    sel_op_or * (1 - sel_op_or) = 0;
-    sel_op_xor * (1 - sel_op_xor) = 0;
-    sel_op_cast * (1 - sel_op_cast) = 0;
-    sel_op_lt * (1 - sel_op_lt) = 0;
-    sel_op_lte * (1 - sel_op_lte) = 0;
-    sel_op_shl * (1 - sel_op_shl) = 0;
-    sel_op_shr * (1 - sel_op_shr) = 0;
-
-    sel_op_internal_call * (1 - sel_op_internal_call) = 0;
-    sel_op_internal_return * (1 - sel_op_internal_return) = 0;
-    sel_op_jump * (1 - sel_op_jump) = 0;
-    sel_op_jumpi * (1 - sel_op_jumpi) = 0;
-    sel_op_halt * (1 - sel_op_halt) = 0;
-    sel_op_external_call * (1 - sel_op_external_call) = 0;
-
-    // Might be removed if derived from opcode based on a lookup of constants
-    sel_op_mov * ( 1 - sel_op_mov) = 0;
-    sel_op_cmov * ( 1 - sel_op_cmov) = 0;
-
     op_err * (1 - op_err) = 0;
     tag_err * (1 - tag_err) = 0; // Potential optimization (boolean constraint derivation from equivalence check to mem)?
     id_zero * (1 - id_zero) = 0;
-
-    // Might be removed if derived from opcode based on a lookup of constants
-    sel_mem_op_a * (1 - sel_mem_op_a) = 0;
-    sel_mem_op_b * (1 - sel_mem_op_b) = 0;
-    sel_mem_op_c * (1 - sel_mem_op_c) = 0;
-    sel_mem_op_d * (1 - sel_mem_op_d) = 0;
-
-    rwa * (1 - rwa) = 0;
-    rwb * (1 - rwb) = 0;
-    rwc * (1 - rwc) = 0;
-    rwd * (1 - rwd) = 0;
-
-    // Might be removed if derived from opcode based on a lookup of constants
-    sel_resolve_ind_addr_a * (1 - sel_resolve_ind_addr_a) = 0;
-    sel_resolve_ind_addr_b * (1 - sel_resolve_ind_addr_b) = 0;
-    sel_resolve_ind_addr_c * (1 - sel_resolve_ind_addr_c) = 0;
-    sel_resolve_ind_addr_d * (1 - sel_resolve_ind_addr_d) = 0;
 
     // TODO - Potential constraints to be implemented:
     // - mem_addr_a, mem_addr_b, mem_addr_c, mem_addr_d to u32 type:
@@ -356,6 +275,146 @@ namespace main(256);
     // instruction decomposition as only immediate 32-bit values should be written into the indirect registers.
     //
     // - 0 <= r_in_tag, w_in_tag <= 6 // This should be constrained by the operation decomposition.
+
+    //====== BYTECODE DECOMPOSITION =============================================
+    #[LOOKUP_INSTRUCTION_SPEC]
+    sel_not_first {
+        opcode_val,
+        // operation selectors
+        sel_op_sender,
+        sel_op_address,
+        sel_op_storage_address,
+        sel_op_chain_id,
+        sel_op_version,
+        sel_op_block_number,
+        sel_op_coinbase,
+        sel_op_timestamp,
+        sel_op_fee_per_l2_gas,
+        sel_op_fee_per_da_gas,
+        sel_op_transaction_fee,
+        sel_op_l2gasleft,
+        sel_op_dagasleft,
+        sel_op_note_hash_exists,
+        sel_op_emit_note_hash,
+        sel_op_nullifier_exists,
+        sel_op_emit_nullifier,
+        sel_op_l1_to_l2_msg_exists,
+        sel_op_emit_unencrypted_log,
+        sel_op_emit_l2_to_l1_msg,
+        sel_op_get_contract_instance,
+        sel_op_sload,
+        sel_op_sstore,
+        sel_op_radix_le,
+        sel_op_sha256,
+        sel_op_poseidon2,
+        sel_op_keccak,
+        sel_op_pedersen,
+        sel_op_add,
+        sel_op_sub,
+        sel_op_mul,
+        sel_op_div,
+        sel_op_fdiv,
+        sel_op_not,
+        sel_op_eq,
+        sel_op_and,
+        sel_op_or,
+        sel_op_xor,
+        sel_op_cast,
+        sel_op_lt,
+        sel_op_lte,
+        sel_op_shl,
+        sel_op_shr,
+        sel_op_internal_call,
+        sel_op_internal_return,
+        sel_op_jump,
+        sel_op_jumpi,
+        sel_op_halt,
+        sel_op_external_call,
+        sel_op_mov,
+        sel_op_cmov,
+        // we need a separate lookup for gas because we use a different selector
+        // l2_gas_op_cost,
+        // da_gas_op_cost,
+        // memory operations
+        sel_mem_op_a,
+        sel_mem_op_b,
+        sel_mem_op_c,
+        sel_mem_op_d
+    }
+    in
+    instr_spec.sel_instr_spec {
+        // this is the implicit opcode_val
+        clk,
+        // operation selectors
+        instr_spec.sel_op_sender,
+        instr_spec.sel_op_address,
+        instr_spec.sel_op_storage_address,
+        instr_spec.sel_op_chain_id,
+        instr_spec.sel_op_version,
+        instr_spec.sel_op_block_number,
+        instr_spec.sel_op_coinbase,
+        instr_spec.sel_op_timestamp,
+        instr_spec.sel_op_fee_per_l2_gas,
+        instr_spec.sel_op_fee_per_da_gas,
+        instr_spec.sel_op_transaction_fee,
+        instr_spec.sel_op_l2gasleft,
+        instr_spec.sel_op_dagasleft,
+        instr_spec.sel_op_note_hash_exists,
+        instr_spec.sel_op_emit_note_hash,
+        instr_spec.sel_op_nullifier_exists,
+        instr_spec.sel_op_emit_nullifier,
+        instr_spec.sel_op_l1_to_l2_msg_exists,
+        instr_spec.sel_op_emit_unencrypted_log,
+        instr_spec.sel_op_emit_l2_to_l1_msg,
+        instr_spec.sel_op_get_contract_instance,
+        instr_spec.sel_op_sload,
+        instr_spec.sel_op_sstore,
+        instr_spec.sel_op_radix_le,
+        instr_spec.sel_op_sha256,
+        instr_spec.sel_op_poseidon2,
+        instr_spec.sel_op_keccak,
+        instr_spec.sel_op_pedersen,
+        instr_spec.sel_op_add,
+        instr_spec.sel_op_sub,
+        instr_spec.sel_op_mul,
+        instr_spec.sel_op_div,
+        instr_spec.sel_op_fdiv,
+        instr_spec.sel_op_not,
+        instr_spec.sel_op_eq,
+        instr_spec.sel_op_and,
+        instr_spec.sel_op_or,
+        instr_spec.sel_op_xor,
+        instr_spec.sel_op_cast,
+        instr_spec.sel_op_lt,
+        instr_spec.sel_op_lte,
+        instr_spec.sel_op_shl,
+        instr_spec.sel_op_shr,
+        instr_spec.sel_op_internal_call,
+        instr_spec.sel_op_internal_return,
+        instr_spec.sel_op_jump,
+        instr_spec.sel_op_jumpi,
+        instr_spec.sel_op_halt,
+        instr_spec.sel_op_external_call,
+        instr_spec.sel_op_mov,
+        instr_spec.sel_op_cmov,
+        // we need a separate lookup for gas because we use a different selector
+        // instr_spec.l2_gas_op_cost,
+        // instr_spec.da_gas_op_cost,
+        // memory operations
+        instr_spec.sel_mem_op_a,
+        instr_spec.sel_mem_op_b,
+        instr_spec.sel_mem_op_c,
+        instr_spec.sel_mem_op_d
+    };
+
+    #[LOOKUP_CONTROL_FLOW]
+    sel_not_first { pc, opcode_val }
+    in
+    instr_decomp.sel_decomposition
+    {
+        clk,  // this is the implicit pc
+        opcode_val
+    };
 
     //====== COMPARATOR OPCODES CONSTRAINTS =====================================
     // Enforce that the tag for the ouput of EQ opcode is u8 (i.e. equal to 1).
@@ -523,11 +582,6 @@ namespace main(256);
     // respective definitions based on sel_op_mov, sel_op_cmov, and id_zero.
     pol commit sel_mov_ia_to_ic;
     pol commit sel_mov_ib_to_ic;
-
-    // For MOV, we copy ia to ic.
-    // For CMOV, we copy ia to ic if id is NOT zero, otherwise we copy ib to ic.
-    sel_mov_ia_to_ic = sel_op_mov + sel_op_cmov * (1 - id_zero);
-    sel_mov_ib_to_ic = sel_op_cmov * id_zero;
 
     #[MOV_SAME_VALUE_A]
     sel_mov_ia_to_ic * (ia - ic) = 0; // Ensure that the correct value is moved/copied.

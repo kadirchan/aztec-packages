@@ -1,0 +1,167 @@
+// This whole "table" should be fixed when it's supported.
+namespace instr_spec(256);
+    // The row number ("clk") will be the implicit opcode value.
+    pol commit sel_instr_spec;
+
+    // Specification of which operation selector will be on.
+    pol commit sel_op_sender;
+    pol commit sel_op_address;
+    pol commit sel_op_storage_address;
+    pol commit sel_op_chain_id;
+    pol commit sel_op_version;
+    pol commit sel_op_block_number;
+    pol commit sel_op_coinbase;
+    pol commit sel_op_timestamp;
+    pol commit sel_op_fee_per_l2_gas;
+    pol commit sel_op_fee_per_da_gas;
+    pol commit sel_op_transaction_fee;
+    pol commit sel_op_l2gasleft;
+    pol commit sel_op_dagasleft;
+    pol commit sel_op_note_hash_exists;
+    pol commit sel_op_emit_note_hash;
+    pol commit sel_op_nullifier_exists;
+    pol commit sel_op_emit_nullifier;
+    pol commit sel_op_l1_to_l2_msg_exists;
+    pol commit sel_op_emit_unencrypted_log;
+    pol commit sel_op_emit_l2_to_l1_msg;
+    pol commit sel_op_get_contract_instance;
+    pol commit sel_op_sload;
+    pol commit sel_op_sstore;
+    pol commit sel_op_radix_le;
+    pol commit sel_op_sha256;
+    pol commit sel_op_poseidon2;
+    pol commit sel_op_keccak;
+    pol commit sel_op_pedersen;
+    pol commit sel_op_add;
+    pol commit sel_op_sub;
+    pol commit sel_op_mul;
+    pol commit sel_op_div;
+    pol commit sel_op_fdiv;
+    pol commit sel_op_not;
+    pol commit sel_op_eq;
+    pol commit sel_op_and;
+    pol commit sel_op_or;
+    pol commit sel_op_xor;
+    pol commit sel_op_cast;
+    pol commit sel_op_lt;
+    pol commit sel_op_lte;
+    pol commit sel_op_shl;
+    pol commit sel_op_shr;
+    pol commit sel_op_internal_call;
+    pol commit sel_op_internal_return;
+    pol commit sel_op_jump;
+    pol commit sel_op_jumpi;
+    pol commit sel_op_halt;
+    pol commit sel_op_external_call;
+    pol commit sel_op_mov;
+    pol commit sel_op_cmov;
+    // TODO: I think some may be missing
+
+    // Fixed gas cost for each opcode.
+    pol commit l2_gas_op_cost;
+    pol commit da_gas_op_cost;
+
+    //===== LOW LEVEL SPEC ==================================================
+    // What follows is tightly coupled with the current circuit
+    // implementation. It is not part of the "instruction set".
+    pol commit sel_mem_op_a;
+    pol commit sel_mem_op_b;
+    pol commit sel_mem_op_c;
+    pol commit sel_mem_op_d;
+
+    pol commit sel_resolve_ind_addr_a;
+    pol commit sel_resolve_ind_addr_b;
+    pol commit sel_resolve_ind_addr_c;
+    pol commit sel_resolve_ind_addr_d;
+
+    pol commit rwa;
+    pol commit rwb;
+    pol commit rwc;
+    pol commit rwd;
+
+    // Boolean selectors telling whether we move ia to ic or ib to ic.
+    // Boolean constraints and mutual exclusivity are derived from their
+    // respective definitions based on sel_op_mov, sel_op_cmov, and id_zero.
+    pol commit sel_mov_ia_to_ic;
+    pol commit sel_mov_ib_to_ic;
+
+    // Chiplet selectors.
+    pol commit sel_alu;
+    pol commit sel_bin;
+
+    //===== CONSTRAINTS ==================================================
+    // Can probably be removed once this table is fixed.
+    // Or we can always leave them for debugging purposes.
+
+    // Also needed sth like: (sel_op_... + ... + sel_op_...) = 1.
+    sel_op_sender * (1 - sel_op_sender) = 0;
+    sel_op_address * (1 - sel_op_address) = 0;
+    sel_op_storage_address * (1 - sel_op_storage_address) = 0;
+    sel_op_chain_id * (1 - sel_op_chain_id) = 0;
+    sel_op_version * (1 - sel_op_version) = 0;
+    sel_op_block_number * (1 - sel_op_block_number) = 0;
+    sel_op_coinbase * (1 - sel_op_coinbase) = 0;
+    sel_op_timestamp * (1 - sel_op_timestamp) = 0;
+    sel_op_fee_per_l2_gas * (1 - sel_op_fee_per_l2_gas) = 0;
+    sel_op_fee_per_da_gas * (1 - sel_op_fee_per_da_gas) = 0;
+    sel_op_transaction_fee * (1 - sel_op_transaction_fee) = 0;
+    sel_op_l2gasleft * (1 - sel_op_l2gasleft) = 0;
+    sel_op_dagasleft * (1 - sel_op_dagasleft) = 0;
+    sel_op_note_hash_exists * (1 - sel_op_note_hash_exists) = 0;
+    sel_op_emit_note_hash * (1 - sel_op_emit_note_hash) = 0;
+    sel_op_nullifier_exists * (1 - sel_op_nullifier_exists) = 0;
+    sel_op_emit_nullifier * (1 - sel_op_emit_nullifier) = 0;
+    sel_op_l1_to_l2_msg_exists * (1 - sel_op_l1_to_l2_msg_exists) = 0;
+    sel_op_emit_unencrypted_log * (1 - sel_op_emit_unencrypted_log) = 0;
+    sel_op_emit_l2_to_l1_msg * (1 - sel_op_emit_l2_to_l1_msg) = 0;
+    sel_op_get_contract_instance * (1 - sel_op_get_contract_instance) = 0;
+    sel_op_sload * (1 - sel_op_sload) = 0;
+    sel_op_sstore * (1 - sel_op_sstore) = 0;
+    sel_op_radix_le * (1 - sel_op_radix_le) = 0;
+    sel_op_sha256 * (1 - sel_op_sha256) = 0;
+    sel_op_poseidon2 * (1 - sel_op_poseidon2) = 0;
+    sel_op_keccak * (1 - sel_op_keccak) = 0;
+    sel_op_pedersen * (1 - sel_op_pedersen) = 0;
+    sel_op_add * (1 - sel_op_add) = 0;
+    sel_op_sub * (1 - sel_op_sub) = 0;
+    sel_op_mul * (1 - sel_op_mul) = 0;
+    sel_op_div * (1 - sel_op_div) = 0;
+    sel_op_fdiv * (1 - sel_op_fdiv) = 0;
+    sel_op_not * (1 - sel_op_not) = 0;
+    sel_op_eq * (1 - sel_op_eq) = 0;
+    sel_op_and * (1 - sel_op_and) = 0;
+    sel_op_or * (1 - sel_op_or) = 0;
+    sel_op_xor * (1 - sel_op_xor) = 0;
+    sel_op_cast * (1 - sel_op_cast) = 0;
+    sel_op_lt * (1 - sel_op_lt) = 0;
+    sel_op_lte * (1 - sel_op_lte) = 0;
+    sel_op_shl * (1 - sel_op_shl) = 0;
+    sel_op_shr * (1 - sel_op_shr) = 0;
+    sel_op_internal_call * (1 - sel_op_internal_call) = 0;
+    sel_op_internal_return * (1 - sel_op_internal_return) = 0;
+    sel_op_jump * (1 - sel_op_jump) = 0;
+    sel_op_jumpi * (1 - sel_op_jumpi) = 0;
+    sel_op_halt * (1 - sel_op_halt) = 0;
+    sel_op_external_call * (1 - sel_op_external_call) = 0;
+    sel_op_mov * (1 - sel_op_mov) = 0;
+    sel_op_cmov * (1 - sel_op_cmov) = 0;
+
+    sel_mem_op_a * (1 - sel_mem_op_a) = 0;
+    sel_mem_op_b * (1 - sel_mem_op_b) = 0;
+    sel_mem_op_c * (1 - sel_mem_op_c) = 0;
+    sel_mem_op_d * (1 - sel_mem_op_d) = 0;
+
+    sel_resolve_ind_addr_a * (1 - sel_resolve_ind_addr_a) = 0;
+    sel_resolve_ind_addr_b * (1 - sel_resolve_ind_addr_b) = 0;
+    sel_resolve_ind_addr_c * (1 - sel_resolve_ind_addr_c) = 0;
+    sel_resolve_ind_addr_d * (1 - sel_resolve_ind_addr_d) = 0;
+
+    rwa * (1 - rwa) = 0;
+    rwb * (1 - rwb) = 0;
+    rwc * (1 - rwc) = 0;
+    rwd * (1 - rwd) = 0;
+
+    // For MOV, we copy ia to ic.
+    // For CMOV, we copy ia to ic if id is NOT zero, otherwise we copy ib to ic.
+    sel_mov_ia_to_ic = sel_op_mov + sel_op_cmov * (1 - main.id_zero);
+    sel_mov_ib_to_ic = sel_op_cmov * main.id_zero;
